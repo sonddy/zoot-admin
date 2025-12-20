@@ -1037,6 +1037,306 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* Mobile Responsive Styles */
+        @media (max-width: 600px) {
+            body {
+                font-size: 14px;
+            }
+
+            .container {
+                padding: 15px;
+            }
+
+            /* Viewer Banner Mobile */
+            .viewer-banner {
+                flex-direction: column;
+                text-align: center;
+                padding: 12px 16px;
+                gap: 12px;
+            }
+
+            .viewer-banner-text {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .viewer-banner-text span {
+                font-size: 13px;
+            }
+
+            /* Header Mobile */
+            .header {
+                padding: 15px;
+            }
+
+            .logo {
+                flex-direction: column;
+                text-align: center;
+            }
+
+            .logo-icon {
+                width: 45px;
+                height: 45px;
+            }
+
+            .logo-text h1 {
+                font-size: 20px;
+            }
+
+            .logo-text p {
+                font-size: 11px;
+            }
+
+            .wallet-display {
+                padding: 10px 12px;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .wallet-display .label {
+                font-size: 9px;
+            }
+
+            .wallet-display .address {
+                font-size: 11px;
+                max-width: 180px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+            }
+
+            /* Stats Grid Mobile */
+            .stats-grid {
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-card .value {
+                font-size: 28px;
+            }
+
+            .stat-card .label {
+                font-size: 10px;
+            }
+
+            /* Stage Section Mobile */
+            .stage-section {
+                padding: 15px;
+            }
+
+            .stage-header {
+                flex-direction: column;
+                gap: 12px;
+            }
+
+            .stage-tabs {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .stage-tab {
+                padding: 8px 16px;
+                font-size: 12px;
+            }
+
+            .stage-info {
+                gap: 10px;
+            }
+
+            .stage-info-card {
+                padding: 12px;
+            }
+
+            /* Manual Entry Mobile */
+            .manual-entry {
+                padding: 15px;
+            }
+
+            .manual-entry h3 {
+                font-size: 14px;
+            }
+
+            .form-group input, .form-group select {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            /* Controls Bar Mobile */
+            .controls-bar {
+                padding: 0;
+            }
+
+            .action-buttons {
+                flex-wrap: wrap;
+                gap: 8px;
+                width: 100%;
+            }
+
+            .action-buttons .btn {
+                flex: 1;
+                min-width: 45%;
+                padding: 10px 12px;
+                font-size: 12px;
+                justify-content: center;
+            }
+
+            .action-buttons .btn svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .action-buttons .btn span {
+                display: none;
+            }
+
+            .search-box input {
+                font-size: 14px;
+            }
+
+            /* Table Mobile */
+            .table-container {
+                border-radius: 12px;
+            }
+
+            .table-scroll {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            table {
+                min-width: 700px;
+                font-size: 12px;
+            }
+
+            th, td {
+                padding: 10px 8px;
+            }
+
+            th {
+                font-size: 9px;
+            }
+
+            .wallet-cell {
+                font-size: 11px;
+            }
+
+            .amount-cell .sol {
+                font-size: 12px;
+            }
+
+            .amount-cell .zoot {
+                font-size: 10px;
+            }
+
+            .stage-badge {
+                padding: 3px 8px;
+                font-size: 9px;
+            }
+
+            .action-btn {
+                width: 28px;
+                height: 28px;
+            }
+
+            .action-btn svg {
+                width: 12px;
+                height: 12px;
+            }
+
+            .verified-badge {
+                padding: 4px 8px;
+                font-size: 10px;
+            }
+
+            /* Modal Mobile */
+            .modal {
+                margin: 15px;
+                padding: 20px;
+                max-height: 90vh;
+                overflow-y: auto;
+            }
+
+            .modal h3 {
+                font-size: 18px;
+            }
+
+            .modal-field label {
+                font-size: 11px;
+            }
+
+            .modal-field input {
+                padding: 10px 12px;
+                font-size: 14px;
+            }
+
+            .modal-actions {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            .modal-actions .btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            /* Admin Login Button Mobile */
+            .admin-login-btn {
+                bottom: 15px;
+                right: 15px;
+                padding: 8px 12px;
+                font-size: 12px;
+            }
+
+            /* Toast Mobile */
+            .toast {
+                left: 15px;
+                right: 15px;
+                bottom: 70px;
+                transform: none;
+                font-size: 13px;
+            }
+
+            /* Empty State Mobile */
+            .empty-state svg {
+                width: 60px;
+                height: 60px;
+            }
+
+            .empty-state h3 {
+                font-size: 16px;
+            }
+
+            .empty-state p {
+                font-size: 13px;
+            }
+        }
+
+        /* Extra Small Mobile */
+        @media (max-width: 380px) {
+            .container {
+                padding: 10px;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .stat-card .value {
+                font-size: 24px;
+            }
+
+            .action-buttons .btn {
+                min-width: 100%;
+            }
+
+            .wallet-display .address {
+                font-size: 10px;
+                max-width: 140px;
+            }
+        }
     </style>
 </head>
 <body>
