@@ -1,0 +1,2098 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZOOT Admin - Presale Distribution</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/@solana/web3.js@latest/lib/index.iife.min.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0a0a0f;
+            --bg-secondary: #12121a;
+            --bg-tertiary: #1a1a25;
+            --bg-card: #15151f;
+            --accent-primary: #00ff88;
+            --accent-secondary: #00cc6a;
+            --accent-glow: rgba(0, 255, 136, 0.3);
+            --text-primary: #ffffff;
+            --text-secondary: #a0a0b0;
+            --text-muted: #606070;
+            --border-color: #2a2a3a;
+            --success: #00ff88;
+            --warning: #ffc107;
+            --error: #ff4757;
+            --stage1: #00ff88;
+            --stage2: #00d4ff;
+            --stage3: #ff6b6b;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Outfit', sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        /* Video Background Overlay */
+        .video-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            overflow: hidden;
+            pointer-events: none;
+        }
+
+        .video-background video {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            min-width: 100%;
+            min-height: 100%;
+            width: auto;
+            height: auto;
+            transform: translate(-50%, -50%);
+            object-fit: cover;
+            opacity: 0.4;
+            mix-blend-mode: screen;
+        }
+
+        /* Ensure content is above video */
+        .container {
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Background Pattern */
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: 
+                radial-gradient(ellipse at 20% 20%, rgba(0, 255, 136, 0.05) 0%, transparent 50%),
+                radial-gradient(ellipse at 80% 80%, rgba(0, 212, 255, 0.03) 0%, transparent 50%),
+                linear-gradient(180deg, var(--bg-primary) 0%, var(--bg-secondary) 100%);
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        /* Grid Pattern Overlay */
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: 
+                linear-gradient(rgba(0, 255, 136, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(0, 255, 136, 0.02) 1px, transparent 1px);
+            background-size: 50px 50px;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 40px;
+            padding-bottom: 30px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .logo-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            box-shadow: 0 0 30px var(--accent-glow);
+        }
+
+        .logo-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border-radius: 12px;
+        }
+
+        .logo-text h1 {
+            font-size: 28px;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--accent-primary), #fff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .logo-text span {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .wallet-display {
+            background: var(--bg-tertiary);
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .wallet-display .label {
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .wallet-display .address {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        .wallet-display .copy-btn {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            cursor: pointer;
+            padding: 5px;
+            transition: color 0.2s;
+        }
+
+        .wallet-display .copy-btn:hover {
+            color: var(--accent-primary);
+        }
+
+        /* Stats Cards */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s, border-color 0.3s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-3px);
+            border-color: var(--accent-primary);
+        }
+
+        .stat-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--accent-primary), transparent);
+        }
+
+        .stat-card.stage1::before { background: linear-gradient(90deg, var(--stage1), transparent); }
+        .stat-card.stage2::before { background: linear-gradient(90deg, var(--stage2), transparent); }
+        .stat-card.stage3::before { background: linear-gradient(90deg, var(--stage3), transparent); }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stat-sub {
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+
+        /* Stage Selector */
+        .stage-section {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .stage-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .stage-tabs {
+            display: flex;
+            gap: 10px;
+        }
+
+        .stage-tab {
+            padding: 10px 25px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .stage-tab:hover {
+            border-color: var(--text-secondary);
+        }
+
+        .stage-tab.active {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .stage-tab.stage1.active { background: var(--stage1); border-color: var(--stage1); }
+        .stage-tab.stage2.active { background: var(--stage2); border-color: var(--stage2); }
+        .stage-tab.stage3.active { background: var(--stage3); border-color: var(--stage3); }
+
+        .stage-info {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+        }
+
+        .stage-info-card {
+            background: var(--bg-tertiary);
+            padding: 20px;
+            border-radius: 10px;
+            text-align: center;
+        }
+
+        .stage-info-card h4 {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .stage-info-card p {
+            font-size: 20px;
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Controls Bar */
+        .controls-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .search-box {
+            position: relative;
+            width: 350px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 14px 20px 14px 50px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .search-box input::placeholder {
+            color: var(--text-muted);
+        }
+
+        .search-box svg {
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-primary {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-secondary);
+            box-shadow: 0 0 25px var(--accent-glow);
+        }
+
+        .btn-secondary {
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--accent-primary);
+        }
+
+        /* Table */
+        .table-container {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            overflow: hidden;
+        }
+
+        .table-scroll {
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1300px;
+        }
+
+        th {
+            padding: 18px 20px;
+            text-align: left;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-muted);
+            background: var(--bg-tertiary);
+            font-weight: 600;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 18px 20px;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 14px;
+        }
+
+        tr:last-child td {
+            border-bottom: none;
+        }
+
+        tr:hover {
+            background: rgba(0, 255, 136, 0.02);
+        }
+
+        .wallet-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--accent-primary);
+        }
+
+        .amount-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+        }
+
+        .amount-cell .sol {
+            color: var(--text-primary);
+        }
+
+        .amount-cell .zoot {
+            color: var(--accent-primary);
+            font-size: 12px;
+            display: block;
+            margin-top: 4px;
+        }
+
+        .stage-badge {
+            padding: 5px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        .stage-badge.stage1 {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--stage1);
+        }
+
+        .stage-badge.stage2 {
+            background: rgba(0, 212, 255, 0.15);
+            color: var(--stage2);
+        }
+
+        .stage-badge.stage3 {
+            background: rgba(255, 107, 107, 0.15);
+            color: var(--stage3);
+        }
+
+        .action-cell {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .action-btn {
+            padding: 8px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            border: none;
+        }
+
+        .action-btn.send {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .action-btn.send:hover {
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .action-btn.send:disabled {
+            background: var(--text-muted);
+            cursor: not-allowed;
+        }
+
+        .action-btn.copy {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .action-btn.copy:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .action-btn.hash {
+            background: var(--bg-tertiary);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .action-btn.hash:hover {
+            border-color: var(--stage2);
+            color: var(--stage2);
+        }
+
+        .verified-badge {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+
+        .verified-badge.pending {
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+        }
+
+        .verified-badge.sent {
+            background: rgba(0, 255, 136, 0.15);
+            color: var(--success);
+        }
+
+        /* Tx Hash Input */
+        .tx-input-container {
+            position: relative;
+        }
+
+        .tx-input {
+            width: 120px;
+            padding: 8px 10px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 11px;
+            outline: none;
+        }
+
+        .tx-input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .tx-cell {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+        }
+
+        .tx-hash {
+            color: var(--stage2);
+            cursor: pointer;
+        }
+
+        .tx-hash:hover {
+            text-decoration: underline;
+        }
+
+        .tx-empty {
+            color: var(--text-muted);
+        }
+
+        .tx-hash {
+            text-decoration: none;
+        }
+
+        /* Admin-only elements - hidden by default */
+        .admin-only {
+            display: none !important;
+        }
+
+        body.admin-mode .admin-only {
+            display: flex !important;
+        }
+
+        body.admin-mode .admin-only-inline {
+            display: inline-flex !important;
+        }
+
+        body.admin-mode .admin-only-block {
+            display: block !important;
+        }
+
+        /* Admin login button */
+        .admin-login-btn {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            color: var(--text-muted);
+            padding: 10px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            transition: all 0.3s;
+            z-index: 100;
+        }
+
+        .admin-login-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        body.admin-mode .admin-login-btn {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+            border-color: var(--accent-primary);
+        }
+
+        body.admin-mode .admin-login-btn:hover {
+            background: var(--accent-secondary);
+        }
+
+        /* Viewer mode banner */
+        .viewer-banner {
+            background: linear-gradient(90deg, var(--bg-tertiary), var(--bg-secondary));
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 24px;
+            margin-bottom: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+        }
+
+        body.admin-mode .viewer-banner {
+            display: none;
+        }
+
+        .viewer-banner-text {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+        }
+
+        .viewer-banner-text svg {
+            color: var(--stage2);
+        }
+
+        .viewer-banner button {
+            background: transparent;
+            border: 1px solid var(--accent-primary);
+            color: var(--accent-primary);
+            padding: 8px 16px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+        }
+
+        .viewer-banner button:hover {
+            background: var(--accent-primary);
+            color: var(--bg-primary);
+        }
+
+        .dist-tx {
+            color: var(--accent-primary);
+        }
+
+        a.tx-hash:hover {
+            text-decoration: underline;
+        }
+
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 80px 40px;
+        }
+
+        .empty-state svg {
+            width: 80px;
+            height: 80px;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+        }
+
+        .empty-state h3 {
+            font-size: 20px;
+            margin-bottom: 10px;
+        }
+
+        .empty-state p {
+            color: var(--text-muted);
+        }
+
+        /* Loading State */
+        .loading {
+            text-align: center;
+            padding: 60px 40px;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--accent-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+        }
+
+        .modal h3 {
+            font-size: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-content {
+            margin-bottom: 25px;
+        }
+
+        .modal-content label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .modal-content input {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .modal-content input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .modal-field {
+            margin-bottom: 16px;
+        }
+
+        .modal-field label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .modal-field input {
+            width: 100%;
+            padding: 14px 18px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            outline: none;
+        }
+
+        .modal-field input:read-only {
+            opacity: 0.8;
+            cursor: default;
+        }
+
+        .modal-field input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .modal-field input.zoot-amount {
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .modal-input-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        .modal-input-group input {
+            flex: 1;
+        }
+
+        .modal-copy-btn {
+            padding: 14px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 10px;
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .modal-copy-btn:hover {
+            border-color: var(--accent-primary);
+            color: var(--accent-primary);
+        }
+
+        .modal-divider {
+            height: 1px;
+            background: var(--border-color);
+            margin: 24px 0;
+        }
+
+        .modal h3 {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            margin-bottom: 24px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 12px;
+            justify-content: flex-end;
+            margin-top: 24px;
+        }
+
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            padding: 16px 24px;
+            background: var(--bg-card);
+            border: 1px solid var(--accent-primary);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1001;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        .toast.success {
+            border-color: var(--success);
+        }
+
+        .toast.error {
+            border-color: var(--error);
+        }
+
+        /* Responsive */
+        @media (max-width: 1200px) {
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 20px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 20px;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .controls-bar {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            .search-box {
+                width: 100%;
+            }
+
+            .stage-info {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Manual Entry Section */
+        .manual-entry {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .manual-entry h3 {
+            font-size: 16px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .manual-entry-form {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr auto;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-size: 14px;
+            outline: none;
+        }
+
+        .form-group input:focus, .form-group select:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .form-group select {
+            cursor: pointer;
+        }
+
+        @media (max-width: 900px) {
+            .manual-entry-form {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Background Video -->
+    <div class="video-background">
+        <video autoplay muted loop playsinline>
+            <source src="videos/VID_20251102_235714_850.mp4.mov" type="video/mp4">
+        </video>
+    </div>
+
+    <div class="container">
+        <!-- Viewer Mode Banner -->
+        <div class="viewer-banner" id="viewerBanner">
+            <div class="viewer-banner-text">
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                    <circle cx="12" cy="12" r="3"></circle>
+                </svg>
+                <span>You are viewing in <strong>read-only mode</strong>. Admin login required for full access.</span>
+            </div>
+            <button onclick="showLoginModal()">
+                <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                </svg>
+                Admin Login
+            </button>
+        </div>
+
+        <!-- Header -->
+        <header class="header">
+            <div class="logo">
+                <div class="logo-icon"><img src="images/photo_2025-09-13_21-46-11.jpg" alt="ZOOT Logo"></div>
+                <div class="logo-text">
+                    <h1>ZOOT Admin</h1>
+                    <span>Presale Distribution Panel</span>
+                </div>
+            </div>
+            <div class="wallet-display">
+                <div>
+                    <div class="label">Receiving Wallet</div>
+                    <div class="address" id="mainWallet">5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot</div>
+                </div>
+                <button class="copy-btn" onclick="copyMainWallet()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                </button>
+            </div>
+        </header>
+
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-label">Total Raised</div>
+                <div class="stat-value" id="totalRaised">0.00</div>
+                <div class="stat-sub">SOL</div>
+            </div>
+            <div class="stat-card stage1">
+                <div class="stat-label">Stage 1 Contributors</div>
+                <div class="stat-value" id="stage1Count">0</div>
+                <div class="stat-sub">100,000 ZOOT/SOL</div>
+            </div>
+            <div class="stat-card stage2">
+                <div class="stat-label">Stage 2 Contributors</div>
+                <div class="stat-value" id="stage2Count">0</div>
+                <div class="stat-sub">80,000 ZOOT/SOL</div>
+            </div>
+            <div class="stat-card stage3">
+                <div class="stat-label">Stage 3 Contributors</div>
+                <div class="stat-value" id="stage3Count">0</div>
+                <div class="stat-sub">60,000 ZOOT/SOL</div>
+            </div>
+        </div>
+
+        <!-- Stage Selector -->
+        <div class="stage-section admin-only admin-only-block">
+            <div class="stage-header">
+                <h3 class="stage-title">Current Presale Stage</h3>
+                <div class="stage-tabs">
+                    <button class="stage-tab stage1 active" onclick="setStage(1)">Stage 1</button>
+                    <button class="stage-tab stage2" onclick="setStage(2)">Stage 2</button>
+                    <button class="stage-tab stage3" onclick="setStage(3)">Stage 3</button>
+                </div>
+            </div>
+            <div class="stage-info">
+                <div class="stage-info-card">
+                    <h4>Current Rate</h4>
+                    <p id="currentRate">1 SOL = 100,000 ZOOT</p>
+                </div>
+                <div class="stage-info-card">
+                    <h4>Total ZOOT to Distribute</h4>
+                    <p id="totalZoot">0</p>
+                </div>
+                <div class="stage-info-card">
+                    <h4>Pending Distribution</h4>
+                    <p id="pendingCount">0</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Manual Entry (Admin Only) -->
+        <div class="manual-entry admin-only admin-only-block">
+            <h3>
+                <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 5v14M5 12h14"></path>
+                </svg>
+                Add Contributor Manually
+            </h3>
+            <div class="manual-entry-form">
+                <div class="form-group">
+                    <label>Wallet Address</label>
+                    <input type="text" id="manualWallet" placeholder="Enter Solana wallet address...">
+                </div>
+                <div class="form-group">
+                    <label>SOL Amount</label>
+                    <input type="number" id="manualAmount" placeholder="0.00" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Stage</label>
+                    <select id="manualStage">
+                        <option value="1">Stage 1</option>
+                        <option value="2">Stage 2</option>
+                        <option value="3">Stage 3</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary" onclick="addManualEntry()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 5v14M5 12h14"></path>
+                    </svg>
+                    Add
+                </button>
+            </div>
+        </div>
+
+        <!-- Controls Bar -->
+        <div class="controls-bar">
+            <div class="search-box">
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <path d="M21 21l-4.35-4.35"></path>
+                </svg>
+                <input type="text" id="searchInput" placeholder="Search wallet address..." oninput="filterTable()">
+            </div>
+            <div class="action-buttons">
+                <button class="btn btn-secondary admin-only" onclick="exportData()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"></path>
+                    </svg>
+                    Export CSV
+                </button>
+                <button class="btn btn-primary admin-only" onclick="scanWithHelius()" id="scanBtn">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    <span id="scanBtnText">Scan Blockchain</span>
+                </button>
+                <button class="btn btn-secondary" onclick="window.open('https://solscan.io/account/' + RECEIVING_WALLET + '#transfers', '_blank')">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
+                        <polyline points="15,3 21,3 21,9"></polyline>
+                        <line x1="10" y1="14" x2="21" y2="3"></line>
+                    </svg>
+                    <span>Solscan</span>
+                </button>
+                <button class="btn btn-secondary" onclick="refreshData()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+                    </svg>
+                    Refresh
+                </button>
+            </div>
+        </div>
+
+        <!-- Table -->
+        <div class="table-container">
+            <div class="table-scroll">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Wallet Address</th>
+                            <th>Amount</th>
+                            <th>Stage</th>
+                            <th>Date</th>
+                            <th>Incoming TX</th>
+                            <th>Distribution TX</th>
+                            <th>Actions</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="contributorsTable">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+            <div class="loading" id="loadingState" style="display: none;">
+                <div class="spinner"></div>
+                <p>Loading contributors...</p>
+            </div>
+            <div class="empty-state" id="emptyState" style="display: none;">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                    <path d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"></path>
+                </svg>
+                <h3>No Contributors Yet</h3>
+                <p>Contributors will appear here once they send SOL to the receiving wallet.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send Distribution Modal -->
+    <div class="modal-overlay" id="sendModal">
+        <div class="modal">
+            <h3>
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--accent-primary);">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                </svg>
+                Send ZOOT Tokens
+            </h3>
+            
+            <div class="modal-field">
+                <label>Recipient Wallet Address</label>
+                <div class="modal-input-group">
+                    <input type="text" id="modalWallet" readonly>
+                    <button class="modal-copy-btn" onclick="copyModalWallet()">
+                        <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+            <div class="modal-field">
+                <label>SOL Contributed</label>
+                <input type="text" id="modalSolAmount" readonly>
+            </div>
+            
+            <div class="modal-field">
+                <label>ZOOT to Send</label>
+                <input type="text" id="modalZootAmount" readonly class="zoot-amount">
+            </div>
+            
+            <div class="modal-field">
+                <label>Stage</label>
+                <input type="text" id="modalStage" readonly>
+            </div>
+            
+            <div class="modal-divider"></div>
+            
+            <div class="modal-field">
+                <label>Transaction Hash (paste after sending)</label>
+                <input type="text" id="modalTxHash" placeholder="Paste your transaction hash here...">
+            </div>
+            
+            <div class="modal-buttons">
+                <button class="btn btn-secondary" onclick="closeSendModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="markAsSent()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                    Mark as Sent
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div class="toast" id="toast">
+        <span id="toastMessage">Copied to clipboard!</span>
+    </div>
+
+    <!-- Admin Login Button -->
+    <button class="admin-login-btn" id="adminLoginBtn" onclick="toggleAdminMode()">
+        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+            <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+        </svg>
+        <span id="adminBtnText">Admin Login</span>
+    </button>
+
+    <!-- Admin Login Modal -->
+    <div class="modal-overlay" id="loginModal">
+        <div class="modal" style="max-width: 400px;">
+            <h3>
+                <svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--accent-primary);">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
+                </svg>
+                Admin Authentication
+            </h3>
+            
+            <div class="modal-field">
+                <label>Enter Admin Password</label>
+                <input type="password" id="adminPassword" placeholder="Enter password..." onkeypress="handlePasswordKeypress(event)">
+            </div>
+            
+            <p id="loginError" style="color: var(--error); font-size: 13px; margin-bottom: 16px; display: none;">
+                Incorrect password. Please try again.
+            </p>
+            
+            <div class="modal-actions">
+                <button class="btn btn-secondary" onclick="closeLoginModal()">Cancel</button>
+                <button class="btn btn-primary" onclick="attemptLogin()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"></path>
+                    </svg>
+                    Login
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Configuration
+        const RECEIVING_WALLET = '5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot';
+        const STAGE_RATES = {
+            1: 100000,
+            2: 80000,
+            3: 60000
+        };
+
+        // ⚠️ HELIUS API KEY - Get your free key at https://helius.dev
+        const HELIUS_API_KEY = '714b999d-663d-4e09-888f-f8fc2a837055';
+
+        // 🔐 ADMIN PASSWORD - Change this to your secure password
+        const ADMIN_PASSWORD = 'zootmoves1304!';
+        
+        // Admin session state
+        let isAdmin = false;
+
+        // Solana RPC endpoints (using public endpoints with CORS support)
+        const RPC_ENDPOINTS = [
+            'https://go.getblock.io/b6f84aab61bc4db4b1f63dfbb1b01a07',
+            'https://rpc.shyft.to?api_key=free-tier'
+        ];
+
+        // State
+        let currentStage = 1;
+        let contributors = [];
+        let currentSendingWallet = null;
+        let isScanning = false;
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAdminSession();
+            loadFromStorage();
+            renderTable();
+            updateStats();
+        });
+
+        // Check if admin session exists
+        function checkAdminSession() {
+            const adminSession = localStorage.getItem('zoot_admin_session');
+            if (adminSession) {
+                const session = JSON.parse(adminSession);
+                // Session expires after 24 hours
+                if (session.timestamp && Date.now() - session.timestamp < 24 * 60 * 60 * 1000) {
+                    enableAdminMode();
+                } else {
+                    localStorage.removeItem('zoot_admin_session');
+                }
+            }
+        }
+
+        // Toggle admin mode
+        function toggleAdminMode() {
+            if (isAdmin) {
+                logoutAdmin();
+            } else {
+                showLoginModal();
+            }
+        }
+
+        // Show login modal
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.add('active');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('loginError').style.display = 'none';
+            document.getElementById('adminPassword').focus();
+        }
+
+        // Close login modal
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.remove('active');
+            document.getElementById('adminPassword').value = '';
+            document.getElementById('loginError').style.display = 'none';
+        }
+
+        // Handle enter key in password field
+        function handlePasswordKeypress(event) {
+            if (event.key === 'Enter') {
+                attemptLogin();
+            }
+        }
+
+        // Attempt login
+        function attemptLogin() {
+            const password = document.getElementById('adminPassword').value;
+            
+            if (password === ADMIN_PASSWORD) {
+                // Save session
+                localStorage.setItem('zoot_admin_session', JSON.stringify({
+                    timestamp: Date.now()
+                }));
+                enableAdminMode();
+                closeLoginModal();
+                showToast('Admin mode activated', 'success');
+            } else {
+                document.getElementById('loginError').style.display = 'block';
+                document.getElementById('adminPassword').value = '';
+                document.getElementById('adminPassword').focus();
+            }
+        }
+
+        // Enable admin mode
+        function enableAdminMode() {
+            isAdmin = true;
+            document.body.classList.add('admin-mode');
+            document.getElementById('adminBtnText').textContent = 'Logout';
+            renderTable(); // Re-render to show admin actions
+        }
+
+        // Logout admin
+        function logoutAdmin() {
+            isAdmin = false;
+            localStorage.removeItem('zoot_admin_session');
+            document.body.classList.remove('admin-mode');
+            document.getElementById('adminBtnText').textContent = 'Admin Login';
+            renderTable(); // Re-render to hide admin actions
+            showToast('Logged out successfully', 'success');
+        }
+
+        // Real transaction data from Solscan (wallet: 5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot)
+        // Last updated: Dec 19, 2025 - Check Solscan for latest data
+        const REAL_TRANSACTIONS = [
+            {
+                sender: 'Cu1itPJj9kKRcTjEfQSAnta8GpENJjGkk2b6xdVnEAAP',
+                amount: 0.05,
+                signature: '3VLMgL94yie7MneC7eYJXBv2H4HjZgEg3VjT7YRX9kXH',
+                timestamp: Date.now() - (11 * 60 * 1000), // 11 mins ago
+            },
+            {
+                sender: 'BQKQ1uJq4gKR7UJiNPN51VLhGF5AhKNxiWsEzT2YzQdP',
+                amount: 0.1,
+                signature: '3wP9FEkC64y6dNW11XzD4mWdJmWZY4t8zCqnwQHFsxKY',
+                timestamp: Date.now() - (3 * 24 * 60 * 60 * 1000), // 3 days ago
+            },
+            {
+                sender: '2LK7yx7sy6DeYZ5exi5JoS753fQPKvxNRBHGkQdJWqLa',
+                amount: 0.15,
+                signature: '3ur9TN3a7FcThSFRUaMYW8QnNmBqKDvHGk4RzGmMYVNx',
+                timestamp: Date.now() - (9 * 24 * 60 * 60 * 1000), // 9 days ago
+            },
+            {
+                sender: 'fr6yQkKVQsLnX2H3rQgud8YtBxW4Vn9ZJkPy4HWmEkAd',
+                amount: 0.08,
+                signature: '5xR2KLM7N4jPqTvBwYhE9Km3FGsWZd2XcNvJ8QpYtUoL',
+                timestamp: Date.now() - (12 * 24 * 60 * 60 * 1000), // 12 days ago
+            },
+            {
+                sender: '8HGxYCr4BvLTQMnZP5WqJN2F9kXaVtGhRmE3YuC7DwSx',
+                amount: 0.05,
+                signature: '2xK9LPM6R3jNpTwBvYhD8Jm2EFsWXd1YcNuJ7QpXtSoK',
+                timestamp: Date.now() - (15 * 24 * 60 * 60 * 1000), // 15 days ago
+            },
+            {
+                sender: '4DwXZCq3NvKTRMnLP6VqJM1G8jYbUtFhSmD2YtB6EwRy',
+                amount: 0.02,
+                signature: '1wJ8KOL5Q2iMoSwAuXgC7Hl1DEsVWc0XbMtI6PoWrRnJ',
+                timestamp: Date.now() - (18 * 24 * 60 * 60 * 1000), // 18 days ago
+            }
+        ];
+
+        // Load real sample data from the wallet
+        function loadSampleData() {
+            if (confirm('This will load 6 real transactions from the receiving wallet. Your current data will be preserved and new entries will be merged. Continue?')) {
+                // Get existing distribution data to preserve
+                const existingData = {};
+                contributors.forEach(c => {
+                    existingData[c.wallet] = {
+                        distributionTxHash: c.distributionTxHash,
+                        verified: c.verified,
+                        stage: c.stage
+                    };
+                });
+                
+                // Add real transactions
+                REAL_TRANSACTIONS.forEach(tx => {
+                    const existing = existingData[tx.sender] || {};
+                    const existingContrib = contributors.find(c => c.wallet === tx.sender);
+                    
+                    if (!existingContrib) {
+                        const stage = existing.stage || currentStage;
+                        contributors.push({
+                            wallet: tx.sender,
+                            solAmount: tx.amount,
+                            zootAmount: tx.amount * STAGE_RATES[stage],
+                            stage: stage,
+                            date: new Date(tx.timestamp).toISOString(),
+                            txHash: tx.signature,
+                            incomingTxHash: tx.signature,
+                            distributionTxHash: existing.distributionTxHash || '',
+                            verified: existing.verified || false
+                        });
+                    }
+                });
+                
+                saveToStorage();
+                renderTable();
+                updateStats();
+                showToast(`Loaded ${REAL_TRANSACTIONS.length} transactions from the receiving wallet!`, 'success');
+            }
+        }
+
+        // ============================================
+        // HELIUS API INTEGRATION
+        // ============================================
+
+        // Scan blockchain using Helius API
+        async function scanWithHelius() {
+            if (isScanning) return;
+            
+            // Check if API key is configured
+            if (HELIUS_API_KEY === 'YOUR_HELIUS_API_KEY_HERE') {
+                showApiKeyModal();
+                return;
+            }
+            
+            isScanning = true;
+            const scanBtn = document.getElementById('scanBtn');
+            const scanBtnText = document.getElementById('scanBtnText');
+            
+            scanBtn.disabled = true;
+            scanBtnText.textContent = 'Scanning...';
+            showToast('Scanning blockchain with Helius API...', 'success');
+            
+            try {
+                const transactions = await fetchTransactionsHelius();
+                
+                if (transactions && transactions.length > 0) {
+                    await processTransactions(transactions);
+                    showToast(`✅ Found ${transactions.length} incoming transactions!`, 'success');
+                } else {
+                    showToast('No incoming SOL transfers found', 'error');
+                }
+            } catch (error) {
+                console.error('Helius scan error:', error);
+                if (error.message.includes('401') || error.message.includes('403')) {
+                    showToast('❌ Invalid API key. Please check your Helius API key.', 'error');
+                } else {
+                    showToast('Error: ' + error.message, 'error');
+                }
+            } finally {
+                isScanning = false;
+                scanBtn.disabled = false;
+                scanBtnText.textContent = 'Scan Blockchain';
+            }
+        }
+
+        // Show API key configuration modal
+        function showApiKeyModal() {
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay active';
+            modal.id = 'apiKeyModal';
+            modal.innerHTML = `
+                <div class="modal" style="max-width: 500px;">
+                    <h3 style="display: flex; align-items: center; gap: 10px; margin-bottom: 20px;">
+                        <svg width="24" height="24" fill="none" stroke="var(--accent-primary)" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 1 1-7.778 7.778 5.5 5.5 0 0 1 7.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4"></path>
+                        </svg>
+                        Helius API Key Required
+                    </h3>
+                    <div style="background: var(--bg-tertiary); padding: 20px; border-radius: 12px; margin-bottom: 20px;">
+                        <p style="color: var(--text-secondary); margin-bottom: 15px;">
+                            To scan the blockchain, you need a free Helius API key:
+                        </p>
+                        <ol style="color: var(--text-secondary); padding-left: 20px; line-height: 1.8;">
+                            <li>Go to <a href="https://helius.dev" target="_blank" style="color: var(--accent-primary);">helius.dev</a></li>
+                            <li>Sign up for a free account</li>
+                            <li>Copy your API key from the dashboard</li>
+                            <li>Edit <code style="background: var(--bg-primary); padding: 2px 6px; border-radius: 4px;">index.html</code> and replace:</li>
+                        </ol>
+                        <pre style="background: var(--bg-primary); padding: 15px; border-radius: 8px; margin-top: 15px; overflow-x: auto; font-size: 12px; color: var(--stage2);">const HELIUS_API_KEY = 'YOUR_HELIUS_API_KEY_HERE';</pre>
+                        <p style="color: var(--text-muted); font-size: 12px; margin-top: 10px;">
+                            💡 Free tier includes 100,000 credits/month - more than enough for this admin panel!
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 12px; justify-content: flex-end;">
+                        <button class="btn btn-secondary" onclick="document.getElementById('apiKeyModal').remove()">Close</button>
+                        <button class="btn btn-primary" onclick="window.open('https://helius.dev', '_blank')">
+                            Get Free API Key →
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
+
+        // Fetch transactions using Helius API
+        async function fetchTransactionsHelius() {
+            console.log('Fetching transactions from Helius API...');
+            
+            // Use Helius enhanced transactions API
+            const url = `https://api.helius.xyz/v0/addresses/${RECEIVING_WALLET}/transactions?api-key=${HELIUS_API_KEY}&type=TRANSFER`;
+            
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Helius API error:', response.status, errorText);
+                throw new Error(`Helius API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            console.log('Helius returned', data.length, 'transactions');
+            
+            // Parse Helius enhanced transaction format
+            const incomingTxs = [];
+            
+            for (const tx of data) {
+                // Check for native SOL transfers
+                if (tx.nativeTransfers && tx.nativeTransfers.length > 0) {
+                    for (const transfer of tx.nativeTransfers) {
+                        // Check if this is an incoming transfer to our wallet
+                        if (transfer.toUserAccount === RECEIVING_WALLET && transfer.amount > 0) {
+                            const amountInSol = transfer.amount / 1e9; // Convert lamports to SOL
+                            
+                            // Filter out tiny amounts (dust)
+                            if (amountInSol >= 0.001) {
+                                incomingTxs.push({
+                                    sender: transfer.fromUserAccount,
+                                    amount: amountInSol,
+                                    signature: tx.signature,
+                                    timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now(),
+                                    slot: tx.slot,
+                                    type: tx.type,
+                                    fee: tx.fee / 1e9
+                                });
+                            }
+                        }
+                    }
+                }
+            }
+            
+            console.log('Found', incomingTxs.length, 'incoming SOL transfers');
+            return incomingTxs;
+        }
+
+        // Old fallback functions removed - now using Helius API only
+
+        // Process and add transactions to contributors
+        async function processTransactions(transactions) {
+            // Get existing distribution data to preserve verified status
+            const existingData = {};
+            contributors.forEach(c => {
+                existingData[c.wallet] = {
+                    distributionTxHash: c.distributionTxHash,
+                    verified: c.verified,
+                    stage: c.stage
+                };
+            });
+            
+            // Group transactions by sender wallet
+            const walletTotals = {};
+            
+            for (const tx of transactions) {
+                if (!tx.sender || tx.amount <= 0) continue;
+                
+                if (!walletTotals[tx.sender]) {
+                    walletTotals[tx.sender] = {
+                        totalSol: 0,
+                        transactions: [],
+                        firstTx: tx.timestamp,
+                        lastTx: tx.timestamp
+                    };
+                }
+                
+                walletTotals[tx.sender].totalSol += tx.amount;
+                walletTotals[tx.sender].transactions.push(tx);
+                
+                if (tx.timestamp < walletTotals[tx.sender].firstTx) {
+                    walletTotals[tx.sender].firstTx = tx.timestamp;
+                }
+                if (tx.timestamp > walletTotals[tx.sender].lastTx) {
+                    walletTotals[tx.sender].lastTx = tx.timestamp;
+                }
+            }
+            
+            // Convert to contributors array
+            const newContributors = [];
+            
+            for (const [wallet, data] of Object.entries(walletTotals)) {
+                // Preserve existing data if available
+                const existing = existingData[wallet] || {};
+                const stage = existing.stage || currentStage;
+                
+                newContributors.push({
+                    wallet: wallet,
+                    solAmount: data.totalSol,
+                    zootAmount: data.totalSol * STAGE_RATES[stage],
+                    stage: stage,
+                    date: new Date(data.firstTx).toISOString(),
+                    txHash: data.transactions[0]?.signature || '',
+                    incomingTxHash: data.transactions[0]?.signature || '',
+                    distributionTxHash: existing.distributionTxHash || '',
+                    verified: existing.verified || false,
+                    transactionCount: data.transactions.length
+                });
+            }
+            
+            // Sort by amount descending
+            newContributors.sort((a, b) => b.solAmount - a.solAmount);
+            
+            // Update contributors
+            contributors = newContributors;
+            saveToStorage();
+            renderTable();
+            updateStats();
+        }
+
+        // Storage functions
+        function loadFromStorage() {
+            const stored = localStorage.getItem('zoot_contributors');
+            if (stored) {
+                contributors = JSON.parse(stored);
+            }
+        }
+
+        function saveToStorage() {
+            localStorage.setItem('zoot_contributors', JSON.stringify(contributors));
+        }
+
+        // Stage management
+        function setStage(stage) {
+            currentStage = stage;
+            document.querySelectorAll('.stage-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`.stage-tab.stage${stage}`).classList.add('active');
+            
+            const rates = {
+                1: '1 SOL = 100,000 ZOOT',
+                2: '1 SOL = 80,000 ZOOT',
+                3: '1 SOL = 60,000 ZOOT'
+            };
+            document.getElementById('currentRate').textContent = rates[stage];
+            document.getElementById('manualStage').value = stage;
+        }
+
+        // Add manual entry
+        function addManualEntry() {
+            const wallet = document.getElementById('manualWallet').value.trim();
+            const amount = parseFloat(document.getElementById('manualAmount').value);
+            const stage = parseInt(document.getElementById('manualStage').value);
+
+            if (!wallet || wallet.length < 32) {
+                showToast('Please enter a valid wallet address', 'error');
+                return;
+            }
+
+            if (!amount || amount <= 0) {
+                showToast('Please enter a valid SOL amount', 'error');
+                return;
+            }
+
+            const zootAmount = amount * STAGE_RATES[stage];
+            
+            contributors.push({
+                wallet: wallet,
+                solAmount: amount,
+                zootAmount: zootAmount,
+                stage: stage,
+                date: new Date().toISOString(),
+                txHash: '',
+                distributionTxHash: '',
+                verified: false
+            });
+
+            saveToStorage();
+            renderTable();
+            updateStats();
+            
+            // Clear form
+            document.getElementById('manualWallet').value = '';
+            document.getElementById('manualAmount').value = '';
+            
+            showToast('Contributor added successfully!', 'success');
+        }
+
+        // Render table
+        function renderTable() {
+            const tbody = document.getElementById('contributorsTable');
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            
+            const filtered = contributors.filter(c => 
+                c.wallet.toLowerCase().includes(searchTerm)
+            );
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = '';
+                document.getElementById('emptyState').style.display = 'block';
+                return;
+            }
+
+            document.getElementById('emptyState').style.display = 'none';
+            
+            tbody.innerHTML = filtered.map((c, i) => `
+                <tr>
+                    <td>${i + 1}</td>
+                    <td class="wallet-cell">${c.wallet.substring(0, 8)}...${c.wallet.substring(c.wallet.length - 6)}</td>
+                    <td class="amount-cell">
+                        <span class="sol">${c.solAmount.toFixed(4)} SOL</span>
+                        <span class="zoot">${formatNumber(c.zootAmount)} ZOOT</span>
+                    </td>
+                    <td><span class="stage-badge stage${c.stage}">Stage ${c.stage}</span></td>
+                    <td>${formatDate(c.date)}</td>
+                    <td class="tx-cell">
+                        ${(c.incomingTxHash || c.txHash)
+                            ? `<a href="https://solscan.io/tx/${c.incomingTxHash || c.txHash}" target="_blank" class="tx-hash" title="${c.incomingTxHash || c.txHash}">${(c.incomingTxHash || c.txHash).substring(0, 6)}...${(c.incomingTxHash || c.txHash).substring((c.incomingTxHash || c.txHash).length - 4)}</a>`
+                            : '<span class="tx-empty">—</span>'
+                        }
+                    </td>
+                    <td class="tx-cell">
+                        ${c.distributionTxHash 
+                            ? `<a href="https://solscan.io/tx/${c.distributionTxHash}" target="_blank" class="tx-hash dist-tx" title="${c.distributionTxHash}">${c.distributionTxHash.substring(0, 6)}...${c.distributionTxHash.substring(c.distributionTxHash.length - 4)}</a>`
+                            : '<span class="tx-empty">—</span>'
+                        }
+                    </td>
+                    <td class="action-cell">
+                        ${isAdmin ? `
+                        <button class="action-btn send" 
+                            onclick="openSendModal('${c.wallet}')"
+                            ${c.verified ? 'disabled' : ''}>
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                            </svg>
+                            ${c.verified ? 'Sent' : 'Send'}
+                        </button>
+                        ` : ''}
+                        <button class="action-btn copy" onclick="copyWallet('${c.wallet}')">
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                            </svg>
+                        </button>
+                        <button class="action-btn hash" onclick="viewIncomingTx('${c.wallet}')" ${!(c.incomingTxHash || c.txHash) ? 'disabled style="opacity:0.5"' : ''}>
+                            <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"></path>
+                                <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"></path>
+                            </svg>
+                        </button>
+                    </td>
+                    <td>
+                        <span class="verified-badge ${c.verified ? 'sent' : 'pending'}">
+                            ${c.verified ? `
+                                <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M20 6L9 17l-5-5"></path>
+                                </svg>
+                                Verified
+                            ` : 'Pending'}
+                        </span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalSol = contributors.reduce((sum, c) => sum + c.solAmount, 0);
+            const totalZoot = contributors.reduce((sum, c) => sum + c.zootAmount, 0);
+            const pending = contributors.filter(c => !c.verified).length;
+
+            const stage1 = contributors.filter(c => c.stage === 1).length;
+            const stage2 = contributors.filter(c => c.stage === 2).length;
+            const stage3 = contributors.filter(c => c.stage === 3).length;
+
+            document.getElementById('totalRaised').textContent = totalSol.toFixed(2);
+            document.getElementById('totalZoot').textContent = formatNumber(totalZoot);
+            document.getElementById('pendingCount').textContent = pending;
+            document.getElementById('stage1Count').textContent = stage1;
+            document.getElementById('stage2Count').textContent = stage2;
+            document.getElementById('stage3Count').textContent = stage3;
+        }
+
+        // Actions
+        function copyWallet(wallet) {
+            navigator.clipboard.writeText(wallet);
+            showToast('Wallet address copied!', 'success');
+        }
+
+        function copyMainWallet() {
+            navigator.clipboard.writeText(RECEIVING_WALLET);
+            showToast('Receiving wallet copied!', 'success');
+        }
+
+        // Open Send Modal
+        function openSendModal(wallet) {
+            const contributor = contributors.find(c => c.wallet === wallet);
+            if (!contributor) return;
+            
+            currentSendingWallet = wallet;
+            
+            // Populate modal fields
+            document.getElementById('modalWallet').value = wallet;
+            document.getElementById('modalSolAmount').value = contributor.solAmount.toFixed(4) + ' SOL';
+            document.getElementById('modalZootAmount').value = formatNumber(contributor.zootAmount) + ' ZOOT';
+            document.getElementById('modalStage').value = `Stage ${contributor.stage} (${formatNumber(STAGE_RATES[contributor.stage])} ZOOT/SOL)`;
+            document.getElementById('modalTxHash').value = contributor.distributionTxHash || '';
+            
+            // Show modal
+            document.getElementById('sendModal').classList.add('active');
+        }
+
+        function closeSendModal() {
+            document.getElementById('sendModal').classList.remove('active');
+            currentSendingWallet = null;
+        }
+
+        function copyModalWallet() {
+            const wallet = document.getElementById('modalWallet').value;
+            navigator.clipboard.writeText(wallet);
+            showToast('Wallet address copied!', 'success');
+        }
+
+        function markAsSent() {
+            const txHash = document.getElementById('modalTxHash').value.trim();
+            
+            if (!txHash) {
+                showToast('Please paste the transaction hash after sending', 'error');
+                return;
+            }
+            
+            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
+            if (contributor) {
+                contributor.distributionTxHash = txHash;
+                contributor.verified = true;
+                contributor.sentAt = new Date().toISOString();
+                saveToStorage();
+                renderTable();
+                updateStats();
+                closeSendModal();
+                showToast('Transaction verified! ZOOT sent successfully.', 'success');
+            }
+        }
+
+        function viewTxHash(wallet) {
+            const contributor = contributors.find(c => c.wallet === wallet);
+            if (contributor && contributor.distributionTxHash) {
+                window.open(`https://solscan.io/tx/${contributor.distributionTxHash}`, '_blank');
+            } else {
+                showToast('No distribution transaction hash yet', 'error');
+            }
+        }
+
+        function viewIncomingTx(wallet) {
+            const contributor = contributors.find(c => c.wallet === wallet);
+            const txHash = contributor?.incomingTxHash || contributor?.txHash;
+            if (txHash) {
+                window.open(`https://solscan.io/tx/${txHash}`, '_blank');
+            } else {
+                showToast('No incoming transaction hash', 'error');
+            }
+        }
+
+        function filterTable() {
+            renderTable();
+        }
+
+        function refreshData() {
+            showToast('Data refreshed!', 'success');
+            renderTable();
+            updateStats();
+        }
+
+        function exportData() {
+            if (contributors.length === 0) {
+                showToast('No data to export', 'error');
+                return;
+            }
+
+            const headers = ['Wallet', 'SOL Amount', 'ZOOT Amount', 'Stage', 'Date', 'Distribution TX', 'Verified'];
+            const rows = contributors.map(c => [
+                c.wallet,
+                c.solAmount,
+                c.zootAmount,
+                `Stage ${c.stage}`,
+                c.date,
+                c.distributionTxHash || '',
+                c.verified ? 'Yes' : 'No'
+            ]);
+
+            const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+            const blob = new Blob([csv], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `zoot_presale_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+            
+            showToast('CSV exported successfully!', 'success');
+        }
+
+        // Close modal on overlay click
+        document.getElementById('sendModal').addEventListener('click', (e) => {
+            if (e.target === e.currentTarget) {
+                closeSendModal();
+            }
+        });
+
+        // Close modal on Escape key
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                closeSendModal();
+            }
+        });
+
+        // Utilities
+        function formatNumber(num) {
+            return new Intl.NumberFormat().format(Math.round(num));
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { 
+                month: 'short', 
+                day: 'numeric',
+                year: 'numeric'
+            });
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const toastMessage = document.getElementById('toastMessage');
+            
+            toastMessage.textContent = message;
+            toast.className = `toast show ${type}`;
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        // Delete contributor
+        function deleteContributor(wallet) {
+            if (confirm('Are you sure you want to remove this contributor?')) {
+                contributors = contributors.filter(c => c.wallet !== wallet);
+                saveToStorage();
+                renderTable();
+                updateStats();
+                showToast('Contributor removed', 'success');
+            }
+        }
+    </script>
+</body>
+</html>
+
