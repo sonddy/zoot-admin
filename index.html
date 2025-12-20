@@ -1382,12 +1382,37 @@
         let isScanning = false;
 
         // Initialize
-        document.addEventListener('DOMContentLoaded', () => {
+        document.addEventListener('DOMContentLoaded', async () => {
             checkAdminSession();
             loadFromStorage();
             renderTable();
             updateStats();
+            
+            // Auto-scan blockchain on page load to show real data to all visitors
+            await autoScanBlockchain();
         });
+
+        // Auto-scan blockchain for all visitors (not just admins)
+        async function autoScanBlockchain() {
+            // Only scan if we have less than 1 contributor (fresh load)
+            // or if data is older than 5 minutes
+            const lastScan = localStorage.getItem('zoot_last_scan');
+            const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
+            
+            if (contributors.length === 0 || !lastScan || parseInt(lastScan) < fiveMinutesAgo) {
+                try {
+                    const transactions = await fetchTransactionsHelius();
+                    if (transactions && transactions.length > 0) {
+                        await processTransactions(transactions);
+                        localStorage.setItem('zoot_last_scan', Date.now().toString());
+                        renderTable();
+                        updateStats();
+                    }
+                } catch (error) {
+                    console.log('Auto-scan failed:', error);
+                }
+            }
+        }
 
         // Check if admin session exists
         function checkAdminSession() {
@@ -2007,8 +2032,23 @@
             renderTable();
         }
 
-        function refreshData() {
-            showToast('Data refreshed!', 'success');
+        async function refreshData() {
+            showToast('Refreshing blockchain data...', 'success');
+            
+            try {
+                const transactions = await fetchTransactionsHelius();
+                if (transactions && transactions.length > 0) {
+                    await processTransactions(transactions);
+                    localStorage.setItem('zoot_last_scan', Date.now().toString());
+                    showToast('Data updated from blockchain!', 'success');
+                } else {
+                    showToast('No new transactions found', 'success');
+                }
+            } catch (error) {
+                console.log('Refresh failed:', error);
+                showToast('Could not refresh from blockchain', 'error');
+            }
+            
             renderTable();
             updateStats();
         }
