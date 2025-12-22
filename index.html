@@ -1337,6 +1337,61 @@
                 max-width: 140px;
             }
         }
+
+        /* Load More Button */
+        .load-more-container {
+            display: flex;
+            justify-content: center;
+            padding: 30px 20px;
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-top: none;
+            border-radius: 0 0 16px 16px;
+        }
+
+        .load-more-btn {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+            padding: 14px 32px;
+            border-radius: 12px;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+            border: none;
+            cursor: pointer;
+        }
+
+        .load-more-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 255, 136, 0.3);
+        }
+
+        .load-more-btn:active {
+            transform: translateY(0);
+        }
+
+        .load-more-count {
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        @media (max-width: 600px) {
+            .load-more-container {
+                padding: 20px 15px;
+            }
+
+            .load-more-btn {
+                width: 100%;
+                justify-content: center;
+                padding: 12px 20px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1546,6 +1601,17 @@
                 <h3>No Contributors Yet</h3>
                 <p>Contributors will appear here once they send SOL to the receiving wallet.</p>
             </div>
+            
+            <!-- Load More Button -->
+            <div class="load-more-container" id="loadMoreContainer" style="display: none;">
+                <button class="btn load-more-btn" onclick="loadMore()">
+                    <svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 5v14M5 12h14"></path>
+                    </svg>
+                    <span>Load More</span>
+                    <span class="load-more-count" id="loadMoreCount"></span>
+                </button>
+            </div>
         </div>
     </div>
 
@@ -1680,6 +1746,8 @@
         let contributors = [];
         let currentSendingWallet = null;
         let isScanning = false;
+        let visibleCount = 15; // Pagination: show 15 wallets at a time
+        const ITEMS_PER_PAGE = 15;
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -2153,10 +2221,12 @@
             showToast('Contributor added successfully!', 'success');
         }
 
-        // Render table
+        // Render table with pagination
         function renderTable() {
             const tbody = document.getElementById('contributorsTable');
             const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const loadMoreContainer = document.getElementById('loadMoreContainer');
+            const loadMoreCount = document.getElementById('loadMoreCount');
             
             const filtered = contributors.filter(c => 
                 c.wallet.toLowerCase().includes(searchTerm)
@@ -2165,12 +2235,25 @@
             if (filtered.length === 0) {
                 tbody.innerHTML = '';
                 document.getElementById('emptyState').style.display = 'block';
+                loadMoreContainer.style.display = 'none';
                 return;
             }
 
             document.getElementById('emptyState').style.display = 'none';
             
-            tbody.innerHTML = filtered.map((c, i) => `
+            // Only show visibleCount items
+            const visibleItems = filtered.slice(0, visibleCount);
+            const remainingCount = filtered.length - visibleCount;
+            
+            // Show/hide Load More button
+            if (remainingCount > 0) {
+                loadMoreContainer.style.display = 'flex';
+                loadMoreCount.textContent = `${Math.min(remainingCount, ITEMS_PER_PAGE)} more of ${remainingCount}`;
+            } else {
+                loadMoreContainer.style.display = 'none';
+            }
+            
+            tbody.innerHTML = visibleItems.map((c, i) => `
                 <tr>
                     <td>${i + 1}</td>
                     <td class="wallet-cell">${c.wallet.substring(0, 8)}...${c.wallet.substring(c.wallet.length - 6)}</td>
@@ -2228,6 +2311,18 @@
                     </td>
                 </tr>
             `).join('');
+        }
+
+        // Load more wallets
+        function loadMore() {
+            visibleCount += ITEMS_PER_PAGE;
+            renderTable();
+            showToast('Loaded more wallets', 'success');
+        }
+
+        // Reset pagination when searching
+        function resetPagination() {
+            visibleCount = ITEMS_PER_PAGE;
         }
 
         // Update statistics
@@ -2329,6 +2424,7 @@
         }
 
         function filterTable() {
+            resetPagination(); // Reset to first 15 when searching
             renderTable();
         }
 
