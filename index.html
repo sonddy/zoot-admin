@@ -335,6 +335,185 @@
             font-family: 'JetBrains Mono', monospace;
         }
 
+        /* Stage Progress Bar */
+        .stage-progress-section {
+            margin-top: 25px;
+            background: var(--bg-tertiary);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .stage-progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .stage-progress-label {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .stage-progress-target {
+            font-size: 12px;
+            color: var(--text-muted);
+            background: var(--bg-secondary);
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+
+        .stage-progress-bar-container {
+            height: 16px;
+            background: var(--bg-secondary);
+            border-radius: 10px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .stage-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--accent-primary), var(--accent-secondary));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+            position: relative;
+        }
+
+        .stage-progress-bar::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(90deg, 
+                transparent 0%, 
+                rgba(255,255,255,0.2) 50%, 
+                transparent 100%);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .stage-progress-stats {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+
+        .stage-progress-stats span:first-child {
+            color: var(--accent-primary);
+            font-weight: 600;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stage-progress-stats span:last-child {
+            color: var(--text-muted);
+        }
+
+        /* Stage Progress Wrapper (Visible to all) */
+        .stage-progress-wrapper {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 25px;
+            margin-bottom: 30px;
+        }
+
+        .stage-progress-header-main {
+            margin-bottom: 20px;
+        }
+
+        .stage-current-display {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        .stage-current-label {
+            font-size: 14px;
+            color: var(--text-muted);
+        }
+
+        .stage-current-badge {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            color: var(--bg-primary);
+            padding: 8px 20px;
+            border-radius: 25px;
+            font-weight: 700;
+            font-size: 16px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .stage-current-rate {
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+            background: var(--bg-tertiary);
+            padding: 6px 14px;
+            border-radius: 20px;
+        }
+
+        /* Stage Milestones */
+        .stage-milestones {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 25px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .milestone {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            flex: 1;
+        }
+
+        .milestone-marker {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--bg-tertiary);
+            border: 3px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .milestone-marker.active {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px rgba(0, 255, 136, 0.5);
+        }
+
+        .milestone-marker.completed {
+            background: var(--accent-primary);
+            border-color: var(--accent-primary);
+        }
+
+        .milestone span {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        .milestone small {
+            font-size: 11px;
+            color: var(--text-muted);
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .milestone-marker.active + span,
+        .milestone-marker.completed + span {
+            color: var(--accent-primary);
+        }
+
         /* Controls Bar */
         .controls-bar {
             display: flex;
@@ -1150,6 +1329,69 @@
                 padding: 12px;
             }
 
+            /* Stage Progress Mobile */
+            .stage-progress-section {
+                padding: 15px;
+                margin-top: 15px;
+            }
+
+            .stage-progress-header {
+                flex-direction: column;
+                gap: 8px;
+                align-items: flex-start;
+            }
+
+            .stage-progress-label {
+                font-size: 13px;
+            }
+
+            .stage-progress-target {
+                font-size: 11px;
+            }
+
+            .stage-progress-bar-container {
+                height: 12px;
+            }
+
+            .stage-progress-stats {
+                font-size: 12px;
+                flex-direction: column;
+                gap: 4px;
+            }
+
+            /* Stage Progress Wrapper Mobile */
+            .stage-progress-wrapper {
+                padding: 15px;
+            }
+
+            .stage-current-display {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+            }
+
+            .stage-current-badge {
+                font-size: 14px;
+                padding: 6px 16px;
+            }
+
+            .stage-milestones {
+                flex-direction: column;
+                gap: 15px;
+                align-items: stretch;
+            }
+
+            .milestone {
+                flex-direction: row;
+                justify-content: flex-start;
+                gap: 12px;
+            }
+
+            .milestone-marker {
+                width: 20px;
+                height: 20px;
+            }
+
             /* Manual Entry Mobile */
             .manual-entry {
                 padding: 15px;
@@ -1468,10 +1710,51 @@
             </div>
         </div>
 
-        <!-- Stage Selector -->
+        <!-- Stage Progress (Visible to ALL users) -->
+        <div class="stage-progress-wrapper">
+            <div class="stage-progress-header-main">
+                <div class="stage-current-display">
+                    <span class="stage-current-label">Current Stage:</span>
+                    <span class="stage-current-badge" id="currentStageBadge">Stage 1</span>
+                    <span class="stage-current-rate" id="currentRateDisplay">100,000 ZOOT/SOL</span>
+                </div>
+            </div>
+            <div class="stage-progress-section">
+                <div class="stage-progress-header">
+                    <span class="stage-progress-label">Stage Progress</span>
+                    <span class="stage-progress-target">Target: 50 SOL per stage</span>
+                </div>
+                <div class="stage-progress-bar-container">
+                    <div class="stage-progress-bar" id="stageProgressBar" style="width: 0%"></div>
+                </div>
+                <div class="stage-progress-stats">
+                    <span id="stageProgressText">0 / 50 SOL</span>
+                    <span id="stageProgressRemaining">50 SOL to Stage 2</span>
+                </div>
+            </div>
+            <div class="stage-milestones">
+                <div class="milestone" id="milestone1">
+                    <div class="milestone-marker active"></div>
+                    <span>Stage 1</span>
+                    <small>0-50 SOL</small>
+                </div>
+                <div class="milestone" id="milestone2">
+                    <div class="milestone-marker"></div>
+                    <span>Stage 2</span>
+                    <small>50-100 SOL</small>
+                </div>
+                <div class="milestone" id="milestone3">
+                    <div class="milestone-marker"></div>
+                    <span>Stage 3</span>
+                    <small>100-150 SOL</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Stage Selector (Admin Only) -->
         <div class="stage-section admin-only admin-only-block">
             <div class="stage-header">
-                <h3 class="stage-title">Current Presale Stage</h3>
+                <h3 class="stage-title">Manual Stage Override</h3>
                 <div class="stage-tabs">
                     <button class="stage-tab stage1 active" onclick="setStage(1)">Stage 1</button>
                     <button class="stage-tab stage2" onclick="setStage(2)">Stage 2</button>
@@ -1724,6 +2007,12 @@
             1: 100000,
             2: 80000,
             3: 60000
+        };
+        const STAGE_TARGET = 50; // 50 SOL target per stage
+        const STAGE_THRESHOLDS = {
+            1: 0,      // Stage 1: 0-50 SOL
+            2: 50,     // Stage 2: 50-100 SOL
+            3: 100     // Stage 3: 100-150 SOL
         };
 
         // ⚠️ HELIUS API KEY - Get your free key at https://helius.dev
@@ -2164,6 +2453,21 @@
             localStorage.setItem('zoot_contributors', JSON.stringify(contributors));
         }
 
+        // Calculate current stage based on total SOL raised
+        function calculateCurrentStage() {
+            const totalSol = contributors.reduce((sum, c) => sum + c.solAmount, 0);
+            if (totalSol >= 100) return 3;
+            if (totalSol >= 50) return 2;
+            return 1;
+        }
+
+        // Get stage for a specific SOL amount (based on when it was received)
+        function getStageForTransaction(cumulativeSolBefore) {
+            if (cumulativeSolBefore >= 100) return 3;
+            if (cumulativeSolBefore >= 50) return 2;
+            return 1;
+        }
+
         // Stage management
         function setStage(stage) {
             currentStage = stage;
@@ -2341,6 +2645,76 @@
             document.getElementById('stage1Count').textContent = stage1;
             document.getElementById('stage2Count').textContent = stage2;
             document.getElementById('stage3Count').textContent = stage3;
+
+            // Auto-calculate and update current stage
+            const calculatedStage = calculateCurrentStage();
+            if (calculatedStage !== currentStage) {
+                setStage(calculatedStage);
+            }
+
+            // Update stage progress
+            updateStageProgress(totalSol);
+        }
+
+        // Update stage progress display
+        function updateStageProgress(totalSol) {
+            const stage = calculateCurrentStage();
+            const stageStart = STAGE_THRESHOLDS[stage];
+            const stageEnd = stageStart + STAGE_TARGET;
+            const stageProgress = totalSol - stageStart;
+            const progressPercent = Math.min((stageProgress / STAGE_TARGET) * 100, 100);
+            const remaining = Math.max(stageEnd - totalSol, 0);
+
+            // Update current rate display (admin section)
+            const currentRateEl = document.getElementById('currentRate');
+            if (currentRateEl) {
+                currentRateEl.textContent = `1 SOL = ${formatNumber(STAGE_RATES[stage])} ZOOT`;
+            }
+
+            // Update current stage badge (public section)
+            const stageBadge = document.getElementById('currentStageBadge');
+            const rateDisplay = document.getElementById('currentRateDisplay');
+            if (stageBadge) {
+                stageBadge.textContent = `Stage ${stage}`;
+            }
+            if (rateDisplay) {
+                rateDisplay.textContent = `${formatNumber(STAGE_RATES[stage])} ZOOT/SOL`;
+            }
+
+            // Update progress bar and info
+            const progressBar = document.getElementById('stageProgressBar');
+            const progressText = document.getElementById('stageProgressText');
+            const progressRemaining = document.getElementById('stageProgressRemaining');
+
+            if (progressBar) {
+                progressBar.style.width = `${progressPercent}%`;
+            }
+            if (progressText) {
+                progressText.textContent = `${stageProgress.toFixed(2)} / ${STAGE_TARGET} SOL`;
+            }
+            if (progressRemaining) {
+                if (stage === 3 && totalSol >= 150) {
+                    progressRemaining.textContent = 'All stages complete!';
+                } else {
+                    progressRemaining.textContent = `${remaining.toFixed(2)} SOL to ${stage < 3 ? 'Stage ' + (stage + 1) : 'complete'}`;
+                }
+            }
+
+            // Update milestone markers
+            for (let i = 1; i <= 3; i++) {
+                const milestoneEl = document.getElementById(`milestone${i}`);
+                if (milestoneEl) {
+                    const marker = milestoneEl.querySelector('.milestone-marker');
+                    if (marker) {
+                        marker.classList.remove('active', 'completed');
+                        if (i < stage) {
+                            marker.classList.add('completed');
+                        } else if (i === stage) {
+                            marker.classList.add('active');
+                        }
+                    }
+                }
+            }
         }
 
         // Actions
