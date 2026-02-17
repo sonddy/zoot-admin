@@ -1,0 +1,8 @@
+{
+  "name": "zoot-admin",
+  "version": "1.0.0",
+  "description": "ZOOT Presale Admin Panel",
+  "dependencies": {
+    "node-fetch": "^2.7.0"
+  }
+}
