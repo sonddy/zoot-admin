@@ -460,6 +460,38 @@
             border-radius: 20px;
         }
 
+        /* Total Raised Display */
+        .total-raised-display {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+            padding: 15px 20px;
+            background: linear-gradient(135deg, rgba(0, 255, 136, 0.1), rgba(0, 212, 255, 0.05));
+            border: 1px solid var(--accent-primary);
+            border-radius: 12px;
+        }
+
+        .total-raised-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .total-raised-value {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--accent-primary);
+            font-family: 'JetBrains Mono', monospace;
+            text-shadow: 0 0 20px var(--accent-glow);
+        }
+
+        .total-raised-unit {
+            font-size: 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+        }
+
         /* Stage Milestones */
         .stage-milestones {
             display: flex;
@@ -1696,17 +1728,17 @@
             <div class="stat-card stage1">
                 <div class="stat-label">Stage 1 Contributors</div>
                 <div class="stat-value" id="stage1Count">0</div>
-                <div class="stat-sub">100,000 ZOOT/SOL</div>
+                <div class="stat-sub">1,000,000 ZOOT/SOL</div>
             </div>
             <div class="stat-card stage2">
                 <div class="stat-label">Stage 2 Contributors</div>
                 <div class="stat-value" id="stage2Count">0</div>
-                <div class="stat-sub">80,000 ZOOT/SOL</div>
+                <div class="stat-sub">800,000 ZOOT/SOL</div>
             </div>
             <div class="stat-card stage3">
                 <div class="stat-label">Stage 3 Contributors</div>
                 <div class="stat-value" id="stage3Count">0</div>
-                <div class="stat-sub">60,000 ZOOT/SOL</div>
+                <div class="stat-sub">600,000 ZOOT/SOL</div>
             </div>
         </div>
 
@@ -1716,7 +1748,12 @@
                 <div class="stage-current-display">
                     <span class="stage-current-label">Current Stage:</span>
                     <span class="stage-current-badge" id="currentStageBadge">Stage 1</span>
-                    <span class="stage-current-rate" id="currentRateDisplay">100,000 ZOOT/SOL</span>
+                    <span class="stage-current-rate" id="currentRateDisplay">1,000,000 ZOOT/SOL</span>
+                </div>
+                <div class="total-raised-display">
+                    <span class="total-raised-label">Total Raised:</span>
+                    <span class="total-raised-value" id="totalRaisedPublic">0.00</span>
+                    <span class="total-raised-unit">SOL</span>
                 </div>
             </div>
             <div class="stage-progress-section">
@@ -1764,7 +1801,7 @@
             <div class="stage-info">
                 <div class="stage-info-card">
                     <h4>Current Rate</h4>
-                    <p id="currentRate">1 SOL = 100,000 ZOOT</p>
+                    <p id="currentRate">1 SOL = 1,000,000 ZOOT</p>
                 </div>
                 <div class="stage-info-card">
                     <h4>Total ZOOT to Distribute</h4>
@@ -2004,9 +2041,9 @@
         // Configuration
         const RECEIVING_WALLET = '5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot';
         const STAGE_RATES = {
-            1: 100000,
-            2: 80000,
-            3: 60000
+            1: 1000000,
+            2: 800000,
+            3: 600000
         };
         const STAGE_TARGET = 50; // 50 SOL target per stage
         const STAGE_THRESHOLDS = {
@@ -2027,7 +2064,9 @@
         // Solana RPC endpoints (using public endpoints with CORS support)
         const RPC_ENDPOINTS = [
             'https://go.getblock.io/b6f84aab61bc4db4b1f63dfbb1b01a07',
-            'https://rpc.shyft.to?api_key=free-tier'
+            'https://rpc.shyft.to?api_key=free-tier',
+            'https://rpc.ankr.com/solana',
+            'https://solana-mainnet.core.chainstack.com/264c5e0086a2d9b37baf7e3ae1e42598'
         ];
 
         // State
@@ -2045,30 +2084,441 @@
             renderTable();
             updateStats();
             
-            // Auto-scan blockchain on page load to show real data to all visitors
-            await autoScanBlockchain();
+            // If we have cached contributors data, show it immediately
+            if (contributors.length > 0) {
+                console.log('Showing cached data:', contributors.length, 'contributors');
+                showToast(`Loaded ${contributors.length} cached contributors`, 'success');
+            }
+            
+            // Try to refresh from blockchain
+            try {
+                await autoScanBlockchain();
+            } catch (e) {
+                console.error('Auto-scan error:', e);
+                if (contributors.length === 0) {
+                    showToast('Unable to fetch blockchain data. Please try the Scan button.', 'error');
+                }
+            }
         });
+
+        // Fetch from our server API (no CORS issues!)
+        async function fetchFromServerAPI() {
+            console.log('Fetching from server API...');
+            
+            const response = await fetch('/api/transactions');
+            const data = await response.json();
+            
+            if (data.success && data.transactions && data.transactions.length > 0) {
+                console.log(`Server API (${data.source}) returned ${data.transactions.length} transactions`);
+                return data.transactions;
+            }
+            
+            throw new Error(data.error || 'Server API returned no data');
+        }
 
         // Auto-scan blockchain for all visitors (not just admins)
         async function autoScanBlockchain() {
-            // Only scan if we have less than 1 contributor (fresh load)
-            // or if data is older than 5 minutes
-            const lastScan = localStorage.getItem('zoot_last_scan');
-            const fiveMinutesAgo = Date.now() - (5 * 60 * 1000);
-            
-            if (contributors.length === 0 || !lastScan || parseInt(lastScan) < fiveMinutesAgo) {
-                try {
-                    const transactions = await fetchTransactionsHelius();
-                    if (transactions && transactions.length > 0) {
-                        await processTransactions(transactions);
-                        localStorage.setItem('zoot_last_scan', Date.now().toString());
-                        renderTable();
-                        updateStats();
+            // Always scan on page load to get fresh data
+            try {
+                console.log('Auto-scanning blockchain...');
+                let transactions = null;
+                let successMethod = null;
+                
+                // Try server API first (no CORS issues!), then fallback to direct methods
+                const fetchMethods = [
+                    { name: 'Server API', fn: fetchFromServerAPI },
+                    { name: 'Solscan', fn: fetchTransactionsSolscan },
+                    { name: 'Shyft', fn: fetchTransactionsShyft },
+                    { name: 'Helius', fn: fetchTransactionsHelius },
+                    { name: 'Solana RPC', fn: fetchTransactionsSolanaRPC }
+                ];
+                
+                for (const method of fetchMethods) {
+                    try {
+                        console.log(`Trying ${method.name}...`);
+                        transactions = await method.fn();
+                        if (transactions && transactions.length > 0) {
+                            console.log(`${method.name} succeeded with ${transactions.length} transactions`);
+                            successMethod = method.name;
+                            break;
+                        }
+                    } catch (err) {
+                        console.log(`${method.name} failed:`, err.message);
                     }
-                } catch (error) {
-                    console.log('Auto-scan failed:', error);
+                }
+                
+                console.log('Transactions received:', transactions);
+                
+                if (transactions && transactions.length > 0) {
+                    await processTransactions(transactions);
+                    localStorage.setItem('zoot_last_scan', Date.now().toString());
+                    renderTable();
+                    updateStats();
+                    console.log('Total contributors:', contributors.length);
+                    const totalSol = contributors.reduce((sum, c) => sum + c.solAmount, 0);
+                    console.log('Total SOL:', totalSol);
+                    showToast(`✅ Loaded ${transactions.length} transactions (${totalSol.toFixed(2)} SOL total)`, 'success');
+                } else {
+                    console.log('No transactions found from any source');
+                    // Update stats with current data
+                    updateStats();
+                    
+                    // Show message if no data at all
+                    if (contributors.length === 0) {
+                        showToast('⚠️ API rate limited. Click Scan Blockchain button to retry.', 'error');
+                    }
+                }
+            } catch (error) {
+                console.error('Auto-scan failed:', error);
+                // Still update stats even if scan fails
+                updateStats();
+            }
+        }
+        
+        // Fetch transactions using CORS proxy + Solscan (NO API KEY NEEDED)
+        async function fetchTransactionsSolscan() {
+            console.log('Fetching transactions from Solscan via CORS proxy...');
+            
+            // Use CORS proxy to bypass browser restrictions
+            const corsProxies = [
+                'https://api.allorigins.win/raw?url=',
+                'https://corsproxy.io/?',
+                'https://api.codetabs.com/v1/proxy?quest='
+            ];
+            
+            const solscanUrl = `https://api-v2.solscan.io/v2/account/transfer?address=${RECEIVING_WALLET}&page=1&page_size=100&sort_by=block_time&sort_order=desc&transfer_type=all`;
+            
+            for (const proxy of corsProxies) {
+                try {
+                    console.log('Trying CORS proxy:', proxy);
+                    const response = await fetch(proxy + encodeURIComponent(solscanUrl));
+                    
+                    if (response.ok) {
+                        const data = await response.json();
+                        console.log('Solscan data received:', data);
+                        
+                        if (data.success && data.data && Array.isArray(data.data)) {
+                            const incomingTxs = [];
+                            
+                            for (const tx of data.data) {
+                                // Check for SOL transfers TO our wallet
+                                if (tx.to_address === RECEIVING_WALLET && tx.amount > 0) {
+                                    const amountInSol = tx.amount / 1e9;
+                                    
+                                    if (amountInSol >= 0.001) {
+                                        incomingTxs.push({
+                                            sender: tx.from_address,
+                                            amount: amountInSol,
+                                            signature: tx.trans_id,
+                                            timestamp: tx.block_time * 1000,
+                                            slot: tx.slot || 0
+                                        });
+                                        console.log('Found:', amountInSol, 'SOL from', tx.from_address);
+                                    }
+                                }
+                            }
+                            
+                            console.log('Solscan: Total incoming:', incomingTxs.length);
+                            if (incomingTxs.length > 0) return incomingTxs;
+                        }
+                    }
+                } catch (e) {
+                    console.log('Proxy failed:', proxy, e.message);
                 }
             }
+            
+            // Try alternative Solscan endpoint
+            return await fetchTransactionsSolscanAlt();
+        }
+        
+        // Alternative Solscan fetch using different endpoint
+        async function fetchTransactionsSolscanAlt() {
+            console.log('Trying alternative Solscan endpoint...');
+            
+            const corsProxy = 'https://api.allorigins.win/raw?url=';
+            const url = `https://api.solscan.io/account/soltransfer/export?address=${RECEIVING_WALLET}&type=all`;
+            
+            try {
+                const response = await fetch(corsProxy + encodeURIComponent(url));
+                if (!response.ok) throw new Error('Failed');
+                
+                const text = await response.text();
+                // Parse CSV response if available
+                const lines = text.split('\n').slice(1); // Skip header
+                const incomingTxs = [];
+                
+                for (const line of lines) {
+                    if (!line.trim()) continue;
+                    const parts = line.split(',');
+                    if (parts.length >= 6) {
+                        const toAddr = parts[2]?.replace(/"/g, '');
+                        const amount = parseFloat(parts[4]) || 0;
+                        
+                        if (toAddr === RECEIVING_WALLET && amount > 0.001) {
+                            incomingTxs.push({
+                                sender: parts[1]?.replace(/"/g, '') || 'Unknown',
+                                amount: amount,
+                                signature: parts[0]?.replace(/"/g, '') || '',
+                                timestamp: Date.now(),
+                                slot: 0
+                            });
+                        }
+                    }
+                }
+                
+                if (incomingTxs.length > 0) return incomingTxs;
+            } catch (e) {
+                console.log('Alt endpoint failed:', e.message);
+            }
+            
+            throw new Error('All Solscan methods failed');
+        }
+
+        // Fetch transactions using Shyft API (FREE - no signup needed)
+        async function fetchTransactionsShyft() {
+            console.log('Fetching transactions from Shyft API...');
+            
+            const url = 'https://rpc.shyft.to?api_key=free-tier';
+            
+            try {
+                // Get signatures first
+                const sigResponse = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        jsonrpc: '2.0',
+                        id: 1,
+                        method: 'getSignaturesForAddress',
+                        params: [RECEIVING_WALLET, { limit: 50 }]
+                    })
+                });
+                
+                const sigData = await sigResponse.json();
+                if (sigData.error) throw new Error(sigData.error.message);
+                
+                const signatures = sigData.result || [];
+                console.log('Shyft: Found', signatures.length, 'signatures');
+                
+                if (signatures.length === 0) return [];
+                
+                const incomingTxs = [];
+                
+                // Process transactions
+                for (let i = 0; i < Math.min(signatures.length, 30); i++) {
+                    const sig = signatures[i];
+                    
+                    try {
+                        const txResponse = await fetch(url, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                jsonrpc: '2.0',
+                                id: 1,
+                                method: 'getTransaction',
+                                params: [sig.signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 }]
+                            })
+                        });
+                        
+                        const txData = await txResponse.json();
+                        
+                        if (txData.result && txData.result.meta && !txData.result.meta.err) {
+                            const tx = txData.result;
+                            const preBalances = tx.meta.preBalances;
+                            const postBalances = tx.meta.postBalances;
+                            const accountKeys = tx.transaction.message.accountKeys;
+                            
+                            let receiverIndex = -1;
+                            for (let j = 0; j < accountKeys.length; j++) {
+                                const pubkey = typeof accountKeys[j] === 'string' ? accountKeys[j] : accountKeys[j].pubkey;
+                                if (pubkey === RECEIVING_WALLET) {
+                                    receiverIndex = j;
+                                    break;
+                                }
+                            }
+                            
+                            if (receiverIndex >= 0) {
+                                const balanceChange = (postBalances[receiverIndex] - preBalances[receiverIndex]) / 1e9;
+                                
+                                if (balanceChange > 0.001) {
+                                    let senderAddress = 'Unknown';
+                                    for (let j = 0; j < accountKeys.length; j++) {
+                                        if (j !== receiverIndex && (postBalances[j] - preBalances[j]) < 0) {
+                                            senderAddress = typeof accountKeys[j] === 'string' ? accountKeys[j] : accountKeys[j].pubkey;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    incomingTxs.push({
+                                        sender: senderAddress,
+                                        amount: balanceChange,
+                                        signature: sig.signature,
+                                        timestamp: (sig.blockTime || Math.floor(Date.now() / 1000)) * 1000,
+                                        slot: sig.slot
+                                    });
+                                    console.log('Shyft: Found', balanceChange, 'SOL from', senderAddress);
+                                }
+                            }
+                        }
+                    } catch (txErr) {
+                        // Skip failed transactions
+                    }
+                    
+                    if (i % 5 === 4) await new Promise(r => setTimeout(r, 100));
+                }
+                
+                console.log('Shyft: Total incoming:', incomingTxs.length);
+                return incomingTxs;
+                
+            } catch (e) {
+                console.log('Shyft failed:', e.message);
+                throw e;
+            }
+        }
+        
+        // Fallback: Fetch transactions using Solana RPC
+        async function fetchTransactionsSolanaRPC() {
+            console.log('Fetching transactions using Solana RPC...');
+            
+            // Use the configured RPC endpoints first (they support CORS)
+            const rpcEndpoints = [
+                ...RPC_ENDPOINTS,
+                'https://rpc.ankr.com/solana',
+                'https://solana-api.projectserum.com'
+            ];
+            
+            let rpcUrl = null;
+            
+            // Find a working endpoint
+            for (const endpoint of rpcEndpoints) {
+                try {
+                    console.log('Testing endpoint:', endpoint);
+                    const testResponse = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: 'getHealth'
+                        })
+                    });
+                    if (testResponse.ok) {
+                        rpcUrl = endpoint;
+                        console.log('Using RPC endpoint:', endpoint);
+                        break;
+                    }
+                } catch (e) {
+                    console.log('Endpoint failed:', endpoint, e.message);
+                }
+            }
+            
+                if (!rpcUrl) {
+                // Use Ankr as last resort (it usually works)
+                rpcUrl = 'https://rpc.ankr.com/solana';
+                console.log('Using default RPC:', rpcUrl);
+            } else {
+                console.log('Selected RPC URL:', rpcUrl);
+            }
+            
+            // Get recent signatures for the wallet
+            const signaturesResponse = await fetch(rpcUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    jsonrpc: '2.0',
+                    id: 1,
+                    method: 'getSignaturesForAddress',
+                    params: [RECEIVING_WALLET, { limit: 100 }]
+                })
+            });
+            
+            const signaturesData = await signaturesResponse.json();
+            
+            if (signaturesData.error) {
+                throw new Error('Solana RPC error: ' + signaturesData.error.message);
+            }
+            
+            const signatures = signaturesData.result || [];
+            console.log('Found', signatures.length, 'signatures');
+            
+            if (signatures.length === 0) return [];
+            
+            // Get transaction details for each signature
+            const incomingTxs = [];
+            
+            // Process in batches to avoid rate limits
+            for (let i = 0; i < Math.min(signatures.length, 50); i++) {
+                const sig = signatures[i];
+                
+                try {
+                    const txResponse = await fetch(rpcUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: 'getTransaction',
+                            params: [sig.signature, { encoding: 'jsonParsed', maxSupportedTransactionVersion: 0 }]
+                        })
+                    });
+                    
+                    const txData = await txResponse.json();
+                    
+                    if (txData.result && txData.result.meta && !txData.result.meta.err) {
+                        const tx = txData.result;
+                        const preBalances = tx.meta.preBalances;
+                        const postBalances = tx.meta.postBalances;
+                        const accountKeys = tx.transaction.message.accountKeys;
+                        
+                        // Find the receiving wallet index
+                        let receiverIndex = -1;
+                        for (let j = 0; j < accountKeys.length; j++) {
+                            const pubkey = typeof accountKeys[j] === 'string' ? accountKeys[j] : accountKeys[j].pubkey;
+                            if (pubkey === RECEIVING_WALLET) {
+                                receiverIndex = j;
+                                break;
+                            }
+                        }
+                        
+                        if (receiverIndex >= 0) {
+                            const balanceChange = (postBalances[receiverIndex] - preBalances[receiverIndex]) / 1e9;
+                            
+                            if (balanceChange > 0.001) {
+                                // Find sender (first account that lost SOL)
+                                let senderAddress = 'Unknown';
+                                for (let j = 0; j < accountKeys.length; j++) {
+                                    if (j !== receiverIndex) {
+                                        const change = postBalances[j] - preBalances[j];
+                                        if (change < 0) {
+                                            senderAddress = typeof accountKeys[j] === 'string' ? accountKeys[j] : accountKeys[j].pubkey;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                incomingTxs.push({
+                                    sender: senderAddress,
+                                    amount: balanceChange,
+                                    signature: sig.signature,
+                                    timestamp: (sig.blockTime || Math.floor(Date.now() / 1000)) * 1000,
+                                    slot: sig.slot
+                                });
+                                
+                                console.log('Found incoming tx:', balanceChange, 'SOL from', senderAddress);
+                            }
+                        }
+                    }
+                } catch (txError) {
+                    console.log('Error fetching tx:', sig.signature, txError.message);
+                }
+                
+                // Small delay to avoid rate limiting
+                if (i % 10 === 9) {
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+            
+            console.log('Total incoming transfers found:', incomingTxs.length);
+            return incomingTxs;
         }
 
         // Check if admin session exists
@@ -2239,15 +2689,9 @@
         // HELIUS API INTEGRATION
         // ============================================
 
-        // Scan blockchain using Helius API
+        // Scan blockchain using Helius API with fallback
         async function scanWithHelius() {
             if (isScanning) return;
-            
-            // Check if API key is configured
-            if (HELIUS_API_KEY === 'YOUR_HELIUS_API_KEY_HERE') {
-                showApiKeyModal();
-                return;
-            }
             
             isScanning = true;
             const scanBtn = document.getElementById('scanBtn');
@@ -2255,10 +2699,26 @@
             
             scanBtn.disabled = true;
             scanBtnText.textContent = 'Scanning...';
-            showToast('Scanning blockchain with Helius API...', 'success');
+            showToast('Scanning blockchain...', 'success');
             
             try {
-                const transactions = await fetchTransactionsHelius();
+                let transactions = null;
+                
+                // Try Helius first if API key is configured
+                if (HELIUS_API_KEY !== 'YOUR_HELIUS_API_KEY_HERE') {
+                    try {
+                        transactions = await fetchTransactionsHelius();
+                    } catch (heliusError) {
+                        console.log('Helius failed, trying fallback:', heliusError.message);
+                        showToast('Helius API limit reached, using fallback...', 'success');
+                    }
+                }
+                
+                // Fallback to Solana RPC
+                if (!transactions || transactions.length === 0) {
+                    scanBtnText.textContent = 'Using fallback...';
+                    transactions = await fetchTransactionsSolanaRPC();
+                }
                 
                 if (transactions && transactions.length > 0) {
                     await processTransactions(transactions);
@@ -2267,12 +2727,8 @@
                     showToast('No incoming SOL transfers found', 'error');
                 }
             } catch (error) {
-                console.error('Helius scan error:', error);
-                if (error.message.includes('401') || error.message.includes('403')) {
-                    showToast('❌ Invalid API key. Please check your Helius API key.', 'error');
-                } else {
-                    showToast('Error: ' + error.message, 'error');
-                }
+                console.error('Scan error:', error);
+                showToast('Error: ' + error.message, 'error');
             } finally {
                 isScanning = false;
                 scanBtn.disabled = false;
@@ -2322,16 +2778,20 @@
         // Fetch transactions using Helius API
         async function fetchTransactionsHelius() {
             console.log('Fetching transactions from Helius API...');
+            console.log('Receiving wallet:', RECEIVING_WALLET);
+            console.log('API Key configured:', HELIUS_API_KEY !== 'YOUR_HELIUS_API_KEY_HERE');
             
-            // Use Helius enhanced transactions API
-            const url = `https://api.helius.xyz/v0/addresses/${RECEIVING_WALLET}/transactions?api-key=${HELIUS_API_KEY}&type=TRANSFER`;
+            // Use Helius enhanced transactions API - fetch more transactions
+            const url = `https://api.helius.xyz/v0/addresses/${RECEIVING_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
+            
+            console.log('Fetching from URL:', url.replace(HELIUS_API_KEY, '***'));
             
             const response = await fetch(url);
             
             if (!response.ok) {
                 const errorText = await response.text();
                 console.error('Helius API error:', response.status, errorText);
-                throw new Error(`Helius API error: ${response.status}`);
+                throw new Error(`Helius API error: ${response.status} - ${errorText}`);
             }
             
             const data = await response.json();
@@ -2341,14 +2801,18 @@
             const incomingTxs = [];
             
             for (const tx of data) {
+                console.log('Processing tx:', tx.signature, 'type:', tx.type);
+                
                 // Check for native SOL transfers
                 if (tx.nativeTransfers && tx.nativeTransfers.length > 0) {
                     for (const transfer of tx.nativeTransfers) {
+                        console.log('Native transfer:', transfer.fromUserAccount, '->', transfer.toUserAccount, 'amount:', transfer.amount / 1e9);
+                        
                         // Check if this is an incoming transfer to our wallet
                         if (transfer.toUserAccount === RECEIVING_WALLET && transfer.amount > 0) {
                             const amountInSol = transfer.amount / 1e9; // Convert lamports to SOL
                             
-                            // Filter out tiny amounts (dust)
+                            // Filter out tiny amounts (dust) but keep legitimate small contributions
                             if (amountInSol >= 0.001) {
                                 incomingTxs.push({
                                     sender: transfer.fromUserAccount,
@@ -2357,15 +2821,19 @@
                                     timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now(),
                                     slot: tx.slot,
                                     type: tx.type,
-                                    fee: tx.fee / 1e9
+                                    fee: tx.fee ? tx.fee / 1e9 : 0
                                 });
+                                console.log('Added incoming tx:', amountInSol, 'SOL from', transfer.fromUserAccount);
                             }
                         }
                     }
                 }
             }
             
-            console.log('Found', incomingTxs.length, 'incoming SOL transfers');
+            console.log('Total incoming SOL transfers found:', incomingTxs.length);
+            const totalSol = incomingTxs.reduce((sum, tx) => sum + tx.amount, 0);
+            console.log('Total SOL received:', totalSol.toFixed(4));
+            
             return incomingTxs;
         }
 
@@ -2477,9 +2945,9 @@
             document.querySelector(`.stage-tab.stage${stage}`).classList.add('active');
             
             const rates = {
-                1: '1 SOL = 100,000 ZOOT',
-                2: '1 SOL = 80,000 ZOOT',
-                3: '1 SOL = 60,000 ZOOT'
+                1: '1 SOL = 1,000,000 ZOOT',
+                2: '1 SOL = 800,000 ZOOT',
+                3: '1 SOL = 600,000 ZOOT'
             };
             document.getElementById('currentRate').textContent = rates[stage];
             document.getElementById('manualStage').value = stage;
@@ -2640,6 +3108,7 @@
             const stage3 = contributors.filter(c => c.stage === 3).length;
 
             document.getElementById('totalRaised').textContent = totalSol.toFixed(2);
+            document.getElementById('totalRaisedPublic').textContent = totalSol.toFixed(2);
             document.getElementById('totalZoot').textContent = formatNumber(totalZoot);
             document.getElementById('pendingCount').textContent = pending;
             document.getElementById('stage1Count').textContent = stage1;
