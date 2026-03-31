@@ -2416,18 +2416,20 @@
                 showToast(`Loaded ${contributors.length} cached contributors`, 'success');
             }
             
-            // Try to refresh from blockchain
-            try {
-                await autoScanBlockchain();
-            } catch (e) {
+            // Fetch blockchain data and distribution data in parallel
+            const scanPromise = autoScanBlockchain().catch(e => {
                 console.error('Auto-scan error:', e);
                 if (contributors.length === 0) {
                     showToast('Unable to fetch blockchain data. Please try the Scan button.', 'error');
                 }
-            }
+            });
             
-            // Fetch on-chain distribution data so all visitors can see sent tokens
-            await fetchDistributionData();
+            const distPromise = fetchDistributionData();
+            
+            await Promise.all([scanPromise, distPromise]);
+            
+            // Apply distributions again after both are done
+            applyDistributionData();
         });
 
         // Fetch from our server API (no CORS issues!)
@@ -3233,6 +3235,7 @@
             
             // Update contributors
             contributors = newContributors;
+            applyDistributionData();
             saveToStorage();
             renderTable();
             updateStats();
@@ -3250,6 +3253,8 @@
             localStorage.setItem('zoot_contributors', JSON.stringify(contributors));
         }
 
+        let distributionCache = [];
+
         async function fetchDistributionData() {
             try {
                 const response = await fetch('/api/distributions');
@@ -3257,22 +3262,32 @@
                 
                 if (data.success && data.distributions && data.distributions.length > 0) {
                     console.log(`Loaded ${data.distributions.length} on-chain distributions`);
-                    
-                    for (const dist of data.distributions) {
-                        const contributor = contributors.find(c => c.wallet === dist.recipient);
-                        if (contributor && !contributor.distributionTxHash) {
-                            contributor.distributionTxHash = dist.txHash;
-                            contributor.verified = true;
-                            contributor.sentAt = new Date(dist.timestamp).toISOString();
-                        }
-                    }
-                    
-                    saveToStorage();
-                    renderTable();
-                    updateStats();
+                    distributionCache = data.distributions;
+                    applyDistributionData();
                 }
             } catch (e) {
                 console.log('Distribution fetch error:', e.message);
+            }
+        }
+
+        function applyDistributionData() {
+            if (distributionCache.length === 0 || contributors.length === 0) return;
+            
+            let updated = false;
+            for (const dist of distributionCache) {
+                const contributor = contributors.find(c => c.wallet === dist.recipient);
+                if (contributor && !contributor.distributionTxHash) {
+                    contributor.distributionTxHash = dist.txHash;
+                    contributor.verified = true;
+                    contributor.sentAt = new Date(dist.timestamp).toISOString();
+                    updated = true;
+                }
+            }
+            
+            if (updated) {
+                saveToStorage();
+                renderTable();
+                updateStats();
             }
         }
 
