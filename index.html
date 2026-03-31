@@ -2425,6 +2425,9 @@
                     showToast('Unable to fetch blockchain data. Please try the Scan button.', 'error');
                 }
             }
+            
+            // Fetch on-chain distribution data so all visitors can see sent tokens
+            await fetchDistributionData();
         });
 
         // Fetch from our server API (no CORS issues!)
@@ -3245,6 +3248,32 @@
 
         function saveToStorage() {
             localStorage.setItem('zoot_contributors', JSON.stringify(contributors));
+        }
+
+        async function fetchDistributionData() {
+            try {
+                const response = await fetch('/api/distributions');
+                const data = await response.json();
+                
+                if (data.success && data.distributions && data.distributions.length > 0) {
+                    console.log(`Loaded ${data.distributions.length} on-chain distributions`);
+                    
+                    for (const dist of data.distributions) {
+                        const contributor = contributors.find(c => c.wallet === dist.recipient);
+                        if (contributor && !contributor.distributionTxHash) {
+                            contributor.distributionTxHash = dist.txHash;
+                            contributor.verified = true;
+                            contributor.sentAt = new Date(dist.timestamp).toISOString();
+                        }
+                    }
+                    
+                    saveToStorage();
+                    renderTable();
+                    updateStats();
+                }
+            } catch (e) {
+                console.log('Distribution fetch error:', e.message);
+            }
         }
 
         // Calculate current stage based on total SOL raised
