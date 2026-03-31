@@ -197,6 +197,230 @@
             color: var(--accent-primary);
         }
 
+        /* Phantom Wallet Connect */
+        .phantom-connect-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 20px;
+            border-radius: 10px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-tertiary);
+            color: var(--text-primary);
+            font-family: 'Outfit', sans-serif;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .phantom-connect-btn:hover {
+            border-color: #ab9ff2;
+            background: rgba(171, 159, 242, 0.1);
+        }
+
+        .phantom-connect-btn.connected {
+            border-color: var(--accent-primary);
+            background: rgba(0, 255, 136, 0.08);
+        }
+
+        .phantom-connect-btn .phantom-icon {
+            width: 22px;
+            height: 22px;
+        }
+
+        .phantom-connect-btn .wallet-addr {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--accent-primary);
+        }
+
+        .phantom-connect-btn .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--accent-primary);
+            box-shadow: 0 0 8px var(--accent-glow);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        /* Token Config */
+        .token-config {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px 25px;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        .token-config.visible {
+            display: block;
+        }
+
+        .token-config-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 15px;
+        }
+
+        .token-config-header h3 {
+            font-size: 16px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .token-config-row {
+            display: flex;
+            gap: 15px;
+            align-items: end;
+        }
+
+        .token-config-field {
+            flex: 1;
+        }
+
+        .token-config-field label {
+            display: block;
+            font-size: 11px;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+        }
+
+        .token-config-field input {
+            width: 100%;
+            padding: 12px 16px;
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            color: var(--text-primary);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .token-config-field input:focus {
+            border-color: var(--accent-primary);
+        }
+
+        .token-config-field .token-status {
+            font-size: 12px;
+            margin-top: 6px;
+            color: var(--text-muted);
+        }
+
+        .token-config-field .token-status.valid {
+            color: var(--accent-primary);
+        }
+
+        .token-config-field .token-status.invalid {
+            color: var(--error);
+        }
+
+        /* Send Modal Phantom Section */
+        .modal-phantom-section {
+            background: var(--bg-tertiary);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+
+        .modal-phantom-section h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-phantom {
+            width: 100%;
+            padding: 14px 20px;
+            border-radius: 10px;
+            border: none;
+            background: linear-gradient(135deg, #ab9ff2, #7c6bd6);
+            color: #fff;
+            font-family: 'Outfit', sans-serif;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s;
+        }
+
+        .btn-phantom:hover {
+            background: linear-gradient(135deg, #bfb5f5, #9183e0);
+            box-shadow: 0 0 25px rgba(171, 159, 242, 0.3);
+        }
+
+        .btn-phantom:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-phantom.sending {
+            background: linear-gradient(135deg, #ffc107, #ff9800);
+        }
+
+        .btn-phantom.success {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+        }
+
+        .send-status {
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-secondary);
+            margin-top: 12px;
+        }
+
+        .send-status.error {
+            color: var(--error);
+        }
+
+        .send-status.success {
+            color: var(--accent-primary);
+        }
+
+        .or-divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 20px 0;
+            color: var(--text-muted);
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .or-divider::before,
+        .or-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--border-color);
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
         /* Stats Cards */
         .stats-grid {
             display: grid;
@@ -1173,6 +1397,20 @@
                 text-align: center;
             }
 
+            .header-right {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .phantom-connect-btn {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .token-config-row {
+                flex-direction: column;
+            }
+
             .stats-grid {
                 grid-template-columns: 1fr;
             }
@@ -1704,16 +1942,27 @@
                     <span>Presale Distribution Panel</span>
                 </div>
             </div>
-            <div class="wallet-display">
-                <div>
-                    <div class="label">Receiving Wallet</div>
-                    <div class="address" id="mainWallet">5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot</div>
+            <div class="header-right">
+                <div class="wallet-display">
+                    <div>
+                        <div class="label">Receiving Wallet</div>
+                        <div class="address" id="mainWallet">5WihbrdC2LoJRKDvE8Fhpk7y5UtsV1eLSVhvQZ3tzoot</div>
+                    </div>
+                    <button class="copy-btn" onclick="copyMainWallet()">
+                        <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                        </svg>
+                    </button>
                 </div>
-                <button class="copy-btn" onclick="copyMainWallet()">
-                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
-                        <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                <button class="phantom-connect-btn" id="phantomConnectBtn" onclick="togglePhantomWallet()">
+                    <svg class="phantom-icon" viewBox="0 0 128 128" fill="none">
+                        <rect width="128" height="128" rx="26" fill="#AB9FF2"/>
+                        <circle cx="44" cy="58" r="7" fill="white"/>
+                        <circle cx="72" cy="58" r="7" fill="white"/>
+                        <path d="M44 76C44 76 52 84 64 84C76 84 84 76 84 76" stroke="white" stroke-width="5" stroke-linecap="round"/>
                     </svg>
+                    <span id="phantomBtnText">Connect Phantom</span>
                 </button>
             </div>
         </header>
@@ -1784,6 +2033,30 @@
                     <div class="milestone-marker"></div>
                     <span>Stage 3</span>
                     <small>100-150 SOL</small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Token Config (Admin Only) -->
+        <div class="token-config admin-only admin-only-block" id="tokenConfigSection">
+            <div class="token-config-header">
+                <h3>
+                    <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="color: var(--accent-primary);">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <path d="M12 6v6l4 2"></path>
+                    </svg>
+                    ZOOT Token Configuration
+                </h3>
+            </div>
+            <div class="token-config-row">
+                <div class="token-config-field">
+                    <label>ZOOT Token Mint Address</label>
+                    <input type="text" id="zootMintAddress" placeholder="Paste your ZOOT token mint address..." oninput="saveTokenConfig()">
+                    <div class="token-status" id="tokenStatus">No token configured yet</div>
+                </div>
+                <div class="token-config-field" style="flex: 0 0 180px;">
+                    <label>Token Decimals</label>
+                    <input type="number" id="zootDecimals" value="9" min="0" max="9" oninput="saveTokenConfig()">
                 </div>
             </div>
         </div>
@@ -1974,9 +2247,31 @@
             </div>
             
             <div class="modal-divider"></div>
+
+            <!-- Phantom Direct Send -->
+            <div class="modal-phantom-section" id="phantomSendSection">
+                <h4>
+                    <svg width="18" height="18" viewBox="0 0 128 128" fill="none">
+                        <rect width="128" height="128" rx="26" fill="#AB9FF2"/>
+                        <circle cx="44" cy="58" r="7" fill="white"/>
+                        <circle cx="72" cy="58" r="7" fill="white"/>
+                        <path d="M44 76C44 76 52 84 64 84C76 84 84 76 84 76" stroke="white" stroke-width="5" stroke-linecap="round"/>
+                    </svg>
+                    Send via Phantom Wallet
+                </h4>
+                <button class="btn-phantom" id="phantomSendBtn" onclick="sendZootViaPhantom()">
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                    </svg>
+                    <span id="phantomSendBtnText">Send ZOOT Tokens</span>
+                </button>
+                <div class="send-status" id="sendStatus"></div>
+            </div>
+
+            <div class="or-divider">or</div>
             
             <div class="modal-field">
-                <label>Transaction Hash (paste after sending)</label>
+                <label>Transaction Hash (paste after sending manually)</label>
                 <input type="text" id="modalTxHash" placeholder="Paste your transaction hash here...">
             </div>
             
@@ -2061,6 +2356,16 @@
         // Admin session state
         let isAdmin = false;
 
+        // Phantom Wallet State
+        let phantomWallet = null;
+        let phantomPublicKey = null;
+        let zootMintAddress = localStorage.getItem('zoot_mint_address') || '';
+        let zootDecimals = parseInt(localStorage.getItem('zoot_decimals') || '9');
+
+        // SPL Token Program IDs
+        const TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+        const ASSOCIATED_TOKEN_PROGRAM_ID = new solanaWeb3.PublicKey('ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL');
+
         // Solana RPC endpoints (using public endpoints with CORS support)
         const RPC_ENDPOINTS = [
             'https://go.getblock.io/b6f84aab61bc4db4b1f63dfbb1b01a07',
@@ -2081,8 +2386,27 @@
         document.addEventListener('DOMContentLoaded', async () => {
             checkAdminSession();
             loadFromStorage();
+            loadTokenConfig();
             renderTable();
             updateStats();
+            
+            // Auto-reconnect Phantom if previously connected
+            const provider = getPhantomProvider();
+            if (provider) {
+                try {
+                    const resp = await provider.connect({ onlyIfTrusted: true });
+                    phantomWallet = provider;
+                    phantomPublicKey = resp.publicKey;
+                    const addr = phantomPublicKey.toString();
+                    const btn = document.getElementById('phantomConnectBtn');
+                    btn.classList.add('connected');
+                    btn.innerHTML = `
+                        <span class="dot"></span>
+                        <span class="wallet-addr">${addr.substring(0, 4)}...${addr.substring(addr.length - 4)}</span>
+                        <span>Disconnect</span>
+                    `;
+                } catch (e) {}
+            }
             
             // If we have cached contributors data, show it immediately
             if (contributors.length > 0) {
@@ -3211,6 +3535,14 @@
             document.getElementById('modalStage').value = `Stage ${contributor.stage} (${formatNumber(STAGE_RATES[contributor.stage])} ZOOT/SOL)`;
             document.getElementById('modalTxHash').value = contributor.distributionTxHash || '';
             
+            // Reset Phantom send button state
+            const sendBtn = document.getElementById('phantomSendBtn');
+            if (sendBtn) {
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('sending', 'success');
+            }
+            updatePhantomSendButton();
+            
             // Show modal
             document.getElementById('sendModal').classList.add('active');
         }
@@ -3218,6 +3550,8 @@
         function closeSendModal() {
             document.getElementById('sendModal').classList.remove('active');
             currentSendingWallet = null;
+            const statusEl = document.getElementById('sendStatus');
+            if (statusEl) statusEl.textContent = '';
         }
 
         function copyModalWallet() {
@@ -3244,6 +3578,331 @@
                 updateStats();
                 closeSendModal();
                 showToast('Transaction verified! ZOOT sent successfully.', 'success');
+            }
+        }
+
+        // ========== PHANTOM WALLET INTEGRATION ==========
+
+        async function togglePhantomWallet() {
+            if (phantomWallet) {
+                await disconnectPhantom();
+            } else {
+                await connectPhantom();
+            }
+        }
+
+        async function connectPhantom() {
+            const provider = getPhantomProvider();
+            if (!provider) {
+                showToast('Phantom wallet not found! Install it from phantom.app', 'error');
+                window.open('https://phantom.app/', '_blank');
+                return;
+            }
+
+            try {
+                const resp = await provider.connect();
+                phantomWallet = provider;
+                phantomPublicKey = resp.publicKey;
+                
+                const addr = phantomPublicKey.toString();
+                const btn = document.getElementById('phantomConnectBtn');
+                btn.classList.add('connected');
+                btn.innerHTML = `
+                    <span class="dot"></span>
+                    <span class="wallet-addr">${addr.substring(0, 4)}...${addr.substring(addr.length - 4)}</span>
+                    <span>Disconnect</span>
+                `;
+                
+                showToast('Phantom wallet connected!', 'success');
+                updatePhantomSendButton();
+            } catch (err) {
+                console.error('Phantom connect error:', err);
+                showToast('Failed to connect Phantom: ' + err.message, 'error');
+            }
+        }
+
+        async function disconnectPhantom() {
+            if (phantomWallet) {
+                try { await phantomWallet.disconnect(); } catch (e) {}
+            }
+            phantomWallet = null;
+            phantomPublicKey = null;
+            
+            const btn = document.getElementById('phantomConnectBtn');
+            btn.classList.remove('connected');
+            btn.innerHTML = `
+                <svg class="phantom-icon" viewBox="0 0 128 128" fill="none">
+                    <rect width="128" height="128" rx="26" fill="#AB9FF2"/>
+                    <circle cx="44" cy="58" r="7" fill="white"/>
+                    <circle cx="72" cy="58" r="7" fill="white"/>
+                    <path d="M44 76C44 76 52 84 64 84C76 84 84 76 84 76" stroke="white" stroke-width="5" stroke-linecap="round"/>
+                </svg>
+                <span>Connect Phantom</span>
+            `;
+            
+            showToast('Phantom wallet disconnected', 'success');
+            updatePhantomSendButton();
+        }
+
+        function getPhantomProvider() {
+            if ('phantom' in window) return window.phantom?.solana;
+            if (window.solana?.isPhantom) return window.solana;
+            return null;
+        }
+
+        function updatePhantomSendButton() {
+            const sendBtn = document.getElementById('phantomSendBtn');
+            if (!sendBtn) return;
+
+            if (!phantomWallet) {
+                sendBtn.disabled = false;
+                sendBtn.innerHTML = `
+                    <svg class="phantom-icon" width="18" height="18" viewBox="0 0 128 128" fill="none">
+                        <rect width="128" height="128" rx="26" fill="#AB9FF2"/>
+                        <circle cx="44" cy="58" r="7" fill="white"/>
+                        <circle cx="72" cy="58" r="7" fill="white"/>
+                    </svg>
+                    Connect Phantom First
+                `;
+                sendBtn.onclick = connectPhantom;
+                return;
+            }
+            
+            if (!zootMintAddress) {
+                sendBtn.disabled = true;
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="12" y1="8" x2="12" y2="12"></line>
+                        <line x1="12" y1="16" x2="12.01" y2="16"></line>
+                    </svg>
+                    Set ZOOT Mint Address First
+                `;
+                sendBtn.onclick = null;
+                return;
+            }
+
+            sendBtn.disabled = false;
+            sendBtn.innerHTML = `
+                <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                </svg>
+                <span>Send ZOOT Tokens</span>
+            `;
+            sendBtn.onclick = sendZootViaPhantom;
+        }
+
+        function saveTokenConfig() {
+            zootMintAddress = document.getElementById('zootMintAddress').value.trim();
+            zootDecimals = parseInt(document.getElementById('zootDecimals').value) || 9;
+            localStorage.setItem('zoot_mint_address', zootMintAddress);
+            localStorage.setItem('zoot_decimals', zootDecimals.toString());
+            
+            const statusEl = document.getElementById('tokenStatus');
+            if (zootMintAddress.length >= 32 && zootMintAddress.length <= 44) {
+                statusEl.textContent = 'Token mint address saved';
+                statusEl.className = 'token-status valid';
+            } else if (zootMintAddress.length > 0) {
+                statusEl.textContent = 'Invalid address format';
+                statusEl.className = 'token-status invalid';
+            } else {
+                statusEl.textContent = 'No token configured yet';
+                statusEl.className = 'token-status';
+            }
+            updatePhantomSendButton();
+        }
+
+        function loadTokenConfig() {
+            const mintInput = document.getElementById('zootMintAddress');
+            const decimalsInput = document.getElementById('zootDecimals');
+            if (mintInput) mintInput.value = zootMintAddress;
+            if (decimalsInput) decimalsInput.value = zootDecimals;
+            
+            const statusEl = document.getElementById('tokenStatus');
+            if (statusEl && zootMintAddress) {
+                statusEl.textContent = 'Token mint address saved';
+                statusEl.className = 'token-status valid';
+            }
+        }
+
+        async function findAssociatedTokenAddress(walletAddress, tokenMintAddress) {
+            const walletPubkey = new solanaWeb3.PublicKey(walletAddress);
+            const mintPubkey = new solanaWeb3.PublicKey(tokenMintAddress);
+            
+            const [ata] = await solanaWeb3.PublicKey.findProgramAddress(
+                [
+                    walletPubkey.toBuffer(),
+                    TOKEN_PROGRAM_ID.toBuffer(),
+                    mintPubkey.toBuffer(),
+                ],
+                ASSOCIATED_TOKEN_PROGRAM_ID
+            );
+            return ata;
+        }
+
+        function createAssociatedTokenAccountInstruction(payer, ata, owner, mint) {
+            return new solanaWeb3.TransactionInstruction({
+                keys: [
+                    { pubkey: payer, isSigner: true, isWritable: true },
+                    { pubkey: ata, isSigner: false, isWritable: true },
+                    { pubkey: owner, isSigner: false, isWritable: false },
+                    { pubkey: mint, isSigner: false, isWritable: false },
+                    { pubkey: solanaWeb3.SystemProgram.programId, isSigner: false, isWritable: false },
+                    { pubkey: TOKEN_PROGRAM_ID, isSigner: false, isWritable: false },
+                    { pubkey: solanaWeb3.SYSVAR_RENT_PUBKEY, isSigner: false, isWritable: false },
+                ],
+                programId: ASSOCIATED_TOKEN_PROGRAM_ID,
+                data: new Uint8Array(0),
+            });
+        }
+
+        function createTransferInstruction(source, destination, owner, amount) {
+            const data = new Uint8Array(9);
+            data[0] = 3;
+            const view = new DataView(data.buffer);
+            view.setBigUint64(1, BigInt(amount), true);
+            
+            return new solanaWeb3.TransactionInstruction({
+                keys: [
+                    { pubkey: source, isSigner: false, isWritable: true },
+                    { pubkey: destination, isSigner: false, isWritable: true },
+                    { pubkey: owner, isSigner: true, isWritable: false },
+                ],
+                programId: TOKEN_PROGRAM_ID,
+                data: data,
+            });
+        }
+
+        async function sendZootViaPhantom() {
+            if (!phantomWallet || !phantomPublicKey) {
+                showToast('Please connect Phantom wallet first', 'error');
+                return;
+            }
+
+            if (!zootMintAddress) {
+                showToast('Please set the ZOOT token mint address in the config section', 'error');
+                return;
+            }
+
+            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
+            if (!contributor) {
+                showToast('Contributor not found', 'error');
+                return;
+            }
+
+            const sendBtn = document.getElementById('phantomSendBtn');
+            const statusEl = document.getElementById('sendStatus');
+            
+            try {
+                sendBtn.disabled = true;
+                sendBtn.classList.add('sending');
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 11-6.219-8.56"></path>
+                    </svg>
+                    Preparing Transaction...
+                `;
+                statusEl.textContent = 'Building transaction...';
+                statusEl.className = 'send-status';
+
+                const connection = new solanaWeb3.Connection(
+                    'https://rpc.ankr.com/solana',
+                    'confirmed'
+                );
+
+                const mintPubkey = new solanaWeb3.PublicKey(zootMintAddress);
+                const recipientPubkey = new solanaWeb3.PublicKey(contributor.wallet);
+                const senderPubkey = phantomPublicKey;
+
+                const rawAmount = BigInt(Math.round(contributor.zootAmount * (10 ** zootDecimals)));
+
+                const senderATA = await findAssociatedTokenAddress(senderPubkey.toString(), zootMintAddress);
+                const recipientATA = await findAssociatedTokenAddress(contributor.wallet, zootMintAddress);
+
+                statusEl.textContent = 'Checking token accounts...';
+
+                const transaction = new solanaWeb3.Transaction();
+
+                const recipientATAInfo = await connection.getAccountInfo(recipientATA);
+                if (!recipientATAInfo) {
+                    statusEl.textContent = 'Creating token account for recipient...';
+                    transaction.add(
+                        createAssociatedTokenAccountInstruction(
+                            senderPubkey, recipientATA, recipientPubkey, mintPubkey
+                        )
+                    );
+                }
+
+                transaction.add(
+                    createTransferInstruction(senderATA, recipientATA, senderPubkey, rawAmount)
+                );
+
+                statusEl.textContent = 'Getting latest blockhash...';
+                const { blockhash, lastValidBlockHeight } = await connection.getLatestBlockhash();
+                transaction.recentBlockhash = blockhash;
+                transaction.feePayer = senderPubkey;
+
+                statusEl.textContent = 'Please approve in Phantom wallet...';
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 11-6.219-8.56"></path>
+                    </svg>
+                    Approve in Phantom...
+                `;
+
+                const { signature } = await phantomWallet.signAndSendTransaction(transaction);
+
+                statusEl.textContent = 'Confirming transaction...';
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" style="animation: spin 1s linear infinite;">
+                        <path d="M21 12a9 9 0 11-6.219-8.56"></path>
+                    </svg>
+                    Confirming...
+                `;
+
+                await connection.confirmTransaction({ signature, blockhash, lastValidBlockHeight });
+
+                document.getElementById('modalTxHash').value = signature;
+                contributor.distributionTxHash = signature;
+                contributor.verified = true;
+                contributor.sentAt = new Date().toISOString();
+                saveToStorage();
+                renderTable();
+                updateStats();
+
+                sendBtn.classList.remove('sending');
+                sendBtn.classList.add('success');
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M20 6L9 17l-5-5"></path>
+                    </svg>
+                    Sent Successfully!
+                `;
+                statusEl.textContent = `TX: ${signature.substring(0, 12)}...${signature.substring(signature.length - 8)}`;
+                statusEl.className = 'send-status success';
+
+                showToast(`${formatNumber(contributor.zootAmount)} ZOOT sent to ${contributor.wallet.substring(0, 8)}...!`, 'success');
+
+                setTimeout(() => closeSendModal(), 2000);
+
+            } catch (err) {
+                console.error('Send ZOOT error:', err);
+                sendBtn.disabled = false;
+                sendBtn.classList.remove('sending');
+                sendBtn.innerHTML = `
+                    <svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
+                    </svg>
+                    Retry Send
+                `;
+                
+                let errorMsg = err.message || 'Transaction failed';
+                if (errorMsg.includes('User rejected')) errorMsg = 'Transaction cancelled by user';
+                else if (errorMsg.includes('insufficient')) errorMsg = 'Insufficient ZOOT token balance';
+                
+                statusEl.textContent = errorMsg;
+                statusEl.className = 'send-status error';
+                showToast('Failed to send: ' + errorMsg, 'error');
             }
         }
 
