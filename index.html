@@ -3170,44 +3170,67 @@
 
         // Old fallback functions removed - now using Helius API only
 
-        // Process and add transactions to contributors (one row per transaction)
+        // Process transactions - group by wallet, track total SOL
         async function processTransactions(transactions) {
-            // Build lookup of existing distribution data keyed by incoming TX hash
-            const existingByTx = {};
+            const existingData = {};
             contributors.forEach(c => {
-                const key = c.incomingTxHash || c.txHash;
-                if (key) {
-                    existingByTx[key] = {
-                        distributionTxHash: c.distributionTxHash,
-                        verified: c.verified,
-                        stage: c.stage
-                    };
-                }
+                existingData[c.wallet] = {
+                    distributionTxHash: c.distributionTxHash,
+                    distributionTxHashes: c.distributionTxHashes || [],
+                    totalDistributed: c.totalDistributed || 0,
+                    verified: c.verified,
+                    stage: c.stage
+                };
             });
             
-            const newContributors = [];
+            const walletTotals = {};
             
             for (const tx of transactions) {
                 if (!tx.sender || tx.amount <= 0) continue;
                 
-                const existing = existingByTx[tx.signature] || {};
+                if (!walletTotals[tx.sender]) {
+                    walletTotals[tx.sender] = {
+                        totalSol: 0,
+                        transactions: [],
+                        firstTx: tx.timestamp,
+                        lastTx: tx.timestamp
+                    };
+                }
+                
+                walletTotals[tx.sender].totalSol += tx.amount;
+                walletTotals[tx.sender].transactions.push(tx);
+                
+                if (tx.timestamp < walletTotals[tx.sender].firstTx) {
+                    walletTotals[tx.sender].firstTx = tx.timestamp;
+                }
+                if (tx.timestamp > walletTotals[tx.sender].lastTx) {
+                    walletTotals[tx.sender].lastTx = tx.timestamp;
+                }
+            }
+            
+            const newContributors = [];
+            
+            for (const [wallet, data] of Object.entries(walletTotals)) {
+                const existing = existingData[wallet] || {};
                 const stage = existing.stage || currentStage;
                 
                 newContributors.push({
-                    wallet: tx.sender,
-                    solAmount: tx.amount,
-                    zootAmount: tx.amount * STAGE_RATES[stage],
+                    wallet: wallet,
+                    solAmount: data.totalSol,
+                    zootAmount: data.totalSol * STAGE_RATES[stage],
                     stage: stage,
-                    date: new Date(tx.timestamp).toISOString(),
-                    txHash: tx.signature,
-                    incomingTxHash: tx.signature,
+                    date: new Date(data.firstTx).toISOString(),
+                    txHash: data.transactions[0]?.signature || '',
+                    incomingTxHash: data.transactions[data.transactions.length - 1]?.signature || '',
                     distributionTxHash: existing.distributionTxHash || '',
-                    verified: existing.verified || false
+                    distributionTxHashes: existing.distributionTxHashes || [],
+                    totalDistributed: existing.totalDistributed || 0,
+                    verified: existing.verified || false,
+                    transactionCount: data.transactions.length
                 });
             }
             
-            // Sort by date descending (newest first)
-            newContributors.sort((a, b) => new Date(b.date) - new Date(a.date));
+            newContributors.sort((a, b) => b.solAmount - a.solAmount);
             
             contributors = newContributors;
             applyDistributionData();
@@ -3250,30 +3273,42 @@
             
             let updated = false;
             
-            // Sort distributions by amount to match largest first
-            const sortedDists = [...distributionCache].sort((a, b) => b.zootAmount - a.zootAmount);
-            const usedDistTxHashes = new Set();
+            // Group distributions by recipient wallet
+            const distByWallet = {};
+            for (const dist of distributionCache) {
+                if (!distByWallet[dist.recipient]) {
+                    distByWallet[dist.recipient] = { totalZoot: 0, txHashes: [], lastTx: null };
+                }
+                distByWallet[dist.recipient].totalZoot += dist.zootAmount;
+                distByWallet[dist.recipient].txHashes.push(dist.txHash);
+                if (!distByWallet[dist.recipient].lastTx || dist.timestamp > distByWallet[dist.recipient].lastTx) {
+                    distByWallet[dist.recipient].lastTx = dist.timestamp;
+                }
+            }
             
-            // First pass: check if any contributor already has this dist TX hash
-            contributors.forEach(c => {
-                if (c.distributionTxHash) usedDistTxHashes.add(c.distributionTxHash);
-            });
-            
-            for (const dist of sortedDists) {
-                if (usedDistTxHashes.has(dist.txHash)) continue;
+            for (const contributor of contributors) {
+                const walletDist = distByWallet[contributor.wallet];
+                if (!walletDist) continue;
                 
-                // Find an unverified contributor with matching wallet
-                const contributor = contributors.find(c => 
-                    c.wallet === dist.recipient && !c.distributionTxHash
-                );
+                contributor.totalDistributed = walletDist.totalZoot;
+                contributor.distributionTxHashes = walletDist.txHashes;
+                contributor.distributionTxHash = walletDist.txHashes[walletDist.txHashes.length - 1] || '';
                 
-                if (contributor) {
-                    contributor.distributionTxHash = dist.txHash;
+                // Verified if distributed >= 90% of owed (small rounding tolerance)
+                const isFullySent = walletDist.totalZoot >= (contributor.zootAmount * 0.9);
+                if (isFullySent && !contributor.verified) {
                     contributor.verified = true;
-                    contributor.sentAt = new Date(dist.timestamp).toISOString();
-                    usedDistTxHashes.add(dist.txHash);
+                    contributor.sentAt = new Date(walletDist.lastTx).toISOString();
+                    updated = true;
+                } else if (isFullySent) {
+                    // Already verified, just make sure data is fresh
+                } else if (!isFullySent && contributor.distributionTxHash) {
+                    // Partially sent - keep unverified so admin can send more
+                    contributor.verified = false;
                     updated = true;
                 }
+                
+                updated = true;
             }
             
             if (updated) {
@@ -3412,7 +3447,7 @@
                     <td class="action-cell">
                         ${isAdmin ? `
                         <button class="action-btn send" 
-                            onclick="openSendModal('${c.incomingTxHash || c.txHash || c.wallet}')"
+                            onclick="openSendModal('${c.wallet}')"
                             ${c.verified ? 'disabled' : ''}>
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
@@ -3559,14 +3594,12 @@
             showToast('Receiving wallet copied!', 'success');
         }
 
-        // Open Send Modal - uses unique ID (incoming TX hash or wallet)
-        function openSendModal(uniqueId) {
-            const contributor = contributors.find(c => 
-                (c.incomingTxHash || c.txHash) === uniqueId || c.wallet === uniqueId
-            );
+        // Open Send Modal
+        function openSendModal(wallet) {
+            const contributor = contributors.find(c => c.wallet === wallet);
             if (!contributor) return;
             
-            currentSendingWallet = uniqueId;
+            currentSendingWallet = wallet;
             
             // Populate modal fields
             document.getElementById('modalWallet').value = contributor.wallet;
@@ -3608,7 +3641,7 @@
                 return;
             }
             
-            const contributor = findContributorByUniqueId(currentSendingWallet);
+            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
             if (contributor) {
                 contributor.distributionTxHash = txHash;
                 contributor.verified = true;
@@ -3824,7 +3857,7 @@
                 return;
             }
 
-            const contributor = findContributorByUniqueId(currentSendingWallet);
+            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
             if (!contributor) {
                 showToast('Contributor not found', 'error');
                 return;
@@ -3944,12 +3977,6 @@
                 statusEl.className = 'send-status error';
                 showToast('Failed to send: ' + errorMsg, 'error');
             }
-        }
-
-        function findContributorByUniqueId(uniqueId) {
-            return contributors.find(c => 
-                (c.incomingTxHash || c.txHash) === uniqueId || c.wallet === uniqueId
-            );
         }
 
         function viewTxHash(wallet) {
