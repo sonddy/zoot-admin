@@ -924,6 +924,22 @@
             text-transform: uppercase;
         }
 
+        /* Badge shown on wallet cell when the same wallet has multiple contributions */
+        .occurrence-badge {
+            display: inline-block;
+            margin-left: 8px;
+            padding: 2px 8px;
+            border-radius: 999px;
+            font-size: 10px;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+            background: rgba(255, 193, 7, 0.15);
+            color: var(--warning);
+            border: 1px solid rgba(255, 193, 7, 0.35);
+            letter-spacing: 0.3px;
+            vertical-align: middle;
+        }
+
         .stage-badge.stage1 {
             background: rgba(0, 255, 136, 0.15);
             color: var(--stage1);
@@ -2379,7 +2395,8 @@
         // State
         let currentStage = 1;
         let contributors = [];
-        let currentSendingWallet = null;
+        let currentSendingWallet = null; // wallet address of the row being sent (kept for backwards compatibility)
+        let currentSendingRowId = null;  // unique id of the contribution row being sent (tx signature or manual id)
         let isScanning = false;
         let visibleCount = 15; // Pagination: show 15 wallets at a time
         const ITEMS_PER_PAGE = 15;
@@ -2975,43 +2992,37 @@
             }
         ];
 
-        // Load real sample data from the wallet
+        // Load real sample data from the wallet (merged by signature; stage auto-assigned by cumulative SOL)
         function loadSampleData() {
             if (confirm('This will load 6 real transactions from the receiving wallet. Your current data will be preserved and new entries will be merged. Continue?')) {
-                // Get existing distribution data to preserve
-                const existingData = {};
-                contributors.forEach(c => {
-                    existingData[c.wallet] = {
-                        distributionTxHash: c.distributionTxHash,
-                        verified: c.verified,
-                        stage: c.stage
-                    };
-                });
-                
-                // Add real transactions
-                REAL_TRANSACTIONS.forEach(tx => {
-                    const existing = existingData[tx.sender] || {};
-                    const existingContrib = contributors.find(c => c.wallet === tx.sender);
-                    
-                    if (!existingContrib) {
-                        const stage = existing.stage || currentStage;
-                        contributors.push({
-                            wallet: tx.sender,
-                            solAmount: tx.amount,
-                            zootAmount: tx.amount * STAGE_RATES[stage],
-                            stage: stage,
-                            date: new Date(tx.timestamp).toISOString(),
-                            txHash: tx.signature,
-                            incomingTxHash: tx.signature,
-                            distributionTxHash: existing.distributionTxHash || '',
-                            verified: existing.verified || false
-                        });
-                    }
-                });
-                
-                saveToStorage();
-                renderTable();
-                updateStats();
+                const existingSignatures = new Set(
+                    contributors.map(c => c.id || c.incomingTxHash || c.txHash).filter(Boolean)
+                );
+
+                // Collect all transactions (existing from blockchain + sample) and re-process chronologically
+                const combined = [];
+                // Convert existing blockchain-sourced rows back into transaction shape
+                for (const c of contributors) {
+                    const sig = c.id || c.incomingTxHash || c.txHash;
+                    if (!sig) continue; // skip manual rows (preserved separately by processTransactions)
+                    combined.push({
+                        sender: c.wallet,
+                        amount: c.solAmount,
+                        signature: sig,
+                        timestamp: new Date(c.date).getTime()
+                    });
+                }
+                for (const tx of REAL_TRANSACTIONS) {
+                    if (existingSignatures.has(tx.signature)) continue;
+                    combined.push({
+                        sender: tx.sender,
+                        amount: tx.amount,
+                        signature: tx.signature,
+                        timestamp: tx.timestamp
+                    });
+                }
+
+                processTransactions(combined);
                 showToast(`Loaded ${REAL_TRANSACTIONS.length} transactions from the receiving wallet!`, 'success');
             }
         }
@@ -3170,68 +3181,64 @@
 
         // Old fallback functions removed - now using Helius API only
 
-        // Process transactions - group by wallet, track total SOL
+        // Process transactions - ONE ROW PER TRANSACTION (not grouped by wallet).
+        // Stage is assigned per-transaction based on cumulative SOL raised chronologically:
+        //   0 -> 50 SOL    = Stage 1 (1,000,000 ZOOT/SOL)
+        //   50 -> 100 SOL  = Stage 2 (800,000 ZOOT/SOL)
+        //   100 -> 150 SOL = Stage 3 (600,000 ZOOT/SOL)
+        // Same wallet contributing multiple times will appear as multiple rows.
         async function processTransactions(transactions) {
-            const existingData = {};
-            contributors.forEach(c => {
-                existingData[c.wallet] = {
-                    distributionTxHash: c.distributionTxHash,
-                    distributionTxHashes: c.distributionTxHashes || [],
-                    totalDistributed: c.totalDistributed || 0,
-                    verified: c.verified,
-                    stage: c.stage
-                };
-            });
-            
-            const walletTotals = {};
-            
+            // Preserve any manual entries (no signature / synthetic id) so we don't lose them on re-scan
+            const manualRows = contributors.filter(c => !c.incomingTxHash && !c.txHash);
+
+            // Dedupe by signature (a tx could be returned by multiple sources)
+            const seen = new Set();
+            const cleaned = [];
             for (const tx of transactions) {
-                if (!tx.sender || tx.amount <= 0) continue;
-                
-                if (!walletTotals[tx.sender]) {
-                    walletTotals[tx.sender] = {
-                        totalSol: 0,
-                        transactions: [],
-                        firstTx: tx.timestamp,
-                        lastTx: tx.timestamp
-                    };
-                }
-                
-                walletTotals[tx.sender].totalSol += tx.amount;
-                walletTotals[tx.sender].transactions.push(tx);
-                
-                if (tx.timestamp < walletTotals[tx.sender].firstTx) {
-                    walletTotals[tx.sender].firstTx = tx.timestamp;
-                }
-                if (tx.timestamp > walletTotals[tx.sender].lastTx) {
-                    walletTotals[tx.sender].lastTx = tx.timestamp;
-                }
+                if (!tx.sender || !tx.signature || tx.amount <= 0) continue;
+                if (seen.has(tx.signature)) continue;
+                seen.add(tx.signature);
+                cleaned.push(tx);
             }
-            
+
+            // Sort chronologically (oldest first) so cumulative SOL is correct
+            cleaned.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
             const newContributors = [];
-            
-            for (const [wallet, data] of Object.entries(walletTotals)) {
-                const existing = existingData[wallet] || {};
-                const stage = existing.stage || currentStage;
-                
+            let cumulativeSol = 0;
+
+            for (const tx of cleaned) {
+                const stage = getStageForTransaction(cumulativeSol);
+                const solAmount = tx.amount;
+                const zootAmount = solAmount * STAGE_RATES[stage];
+
                 newContributors.push({
-                    wallet: wallet,
-                    solAmount: data.totalSol,
-                    zootAmount: data.totalSol * STAGE_RATES[stage],
+                    id: tx.signature,
+                    wallet: tx.sender,
+                    solAmount: solAmount,
+                    zootAmount: zootAmount,
                     stage: stage,
-                    date: new Date(data.firstTx).toISOString(),
-                    txHash: data.transactions[0]?.signature || '',
-                    incomingTxHash: data.transactions[data.transactions.length - 1]?.signature || '',
-                    distributionTxHash: existing.distributionTxHash || '',
-                    distributionTxHashes: existing.distributionTxHashes || [],
-                    totalDistributed: existing.totalDistributed || 0,
-                    verified: existing.verified || false,
-                    transactionCount: data.transactions.length
+                    date: new Date(tx.timestamp || Date.now()).toISOString(),
+                    txHash: tx.signature,
+                    incomingTxHash: tx.signature,
+                    // Distribution info will be filled in by applyDistributionData() using on-chain data
+                    distributionTxHash: '',
+                    distributionTxHashes: [],
+                    totalDistributed: 0,
+                    verified: false
                 });
+
+                cumulativeSol += solAmount;
             }
-            
-            newContributors.sort((a, b) => b.solAmount - a.solAmount);
-            
+
+            // Re-append manual entries (preserved across scans)
+            for (const m of manualRows) {
+                newContributors.push(m);
+            }
+
+            // Display newest first
+            newContributors.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
             contributors = newContributors;
             applyDistributionData();
             saveToStorage();
@@ -3244,6 +3251,26 @@
             const stored = localStorage.getItem('zoot_contributors');
             if (stored) {
                 contributors = JSON.parse(stored);
+                // Migrate legacy rows (pre per-tx schema) by ensuring each has an id.
+                // If a row lacks incoming tx hash AND lacks a manual id, it's a legacy aggregated row -
+                // we still assign a fallback id so the UI (which uses id as unique key) works until the
+                // next blockchain scan replaces it with proper per-tx rows.
+                let needsSave = false;
+                for (const c of contributors) {
+                    if (!c.id) {
+                        c.id = c.incomingTxHash || c.txHash || ('legacy_' + c.wallet + '_' + (c.date || Date.now()));
+                        needsSave = true;
+                    }
+                    if (!c.distributionTxHashes) {
+                        c.distributionTxHashes = c.distributionTxHash ? [c.distributionTxHash] : [];
+                        needsSave = true;
+                    }
+                    if (c.totalDistributed == null) {
+                        c.totalDistributed = c.verified ? c.zootAmount : 0;
+                        needsSave = true;
+                    }
+                }
+                if (needsSave) saveToStorage();
             }
         }
 
@@ -3268,54 +3295,96 @@
             }
         }
 
+        // Allocate on-chain distributions to contribution rows using FIFO per wallet.
+        // If a wallet has multiple contribution rows (multiple SOL transactions), distributions
+        // sent to that wallet are applied in chronological order to the oldest un-filled rows first.
         function applyDistributionData() {
-            if (distributionCache.length === 0 || contributors.length === 0) return;
-            
-            let updated = false;
-            
-            // Group distributions by recipient wallet
-            const distByWallet = {};
-            for (const dist of distributionCache) {
-                if (!distByWallet[dist.recipient]) {
-                    distByWallet[dist.recipient] = { totalZoot: 0, txHashes: [], lastTx: null };
-                }
-                distByWallet[dist.recipient].totalZoot += dist.zootAmount;
-                distByWallet[dist.recipient].txHashes.push(dist.txHash);
-                if (!distByWallet[dist.recipient].lastTx || dist.timestamp > distByWallet[dist.recipient].lastTx) {
-                    distByWallet[dist.recipient].lastTx = dist.timestamp;
+            if (contributors.length === 0) return;
+
+            // Reset only the fields we derive from on-chain distribution data.
+            // Manually-marked rows (no incoming tx hash and distributionTxHash already set) keep their state.
+            for (const c of contributors) {
+                const isManualMark = !c.incomingTxHash && c.distributionTxHash;
+                if (!isManualMark) {
+                    c.distributionTxHash = '';
+                    c.distributionTxHashes = [];
+                    c.totalDistributed = 0;
+                    c.verified = false;
+                    c.sentAt = null;
                 }
             }
-            
-            for (const contributor of contributors) {
-                const walletDist = distByWallet[contributor.wallet];
-                if (!walletDist) continue;
-                
-                contributor.totalDistributed = walletDist.totalZoot;
-                contributor.distributionTxHashes = walletDist.txHashes;
-                contributor.distributionTxHash = walletDist.txHashes[walletDist.txHashes.length - 1] || '';
-                
-                // Verified if distributed >= 90% of owed (small rounding tolerance)
-                const isFullySent = walletDist.totalZoot >= (contributor.zootAmount * 0.9);
-                if (isFullySent && !contributor.verified) {
-                    contributor.verified = true;
-                    contributor.sentAt = new Date(walletDist.lastTx).toISOString();
-                    updated = true;
-                } else if (isFullySent) {
-                    // Already verified, just make sure data is fresh
-                } else if (!isFullySent && contributor.distributionTxHash) {
-                    // Partially sent - keep unverified so admin can send more
-                    contributor.verified = false;
-                    updated = true;
-                }
-                
-                updated = true;
-            }
-            
-            if (updated) {
+
+            if (distributionCache.length === 0) {
                 saveToStorage();
                 renderTable();
                 updateStats();
+                return;
             }
+
+            // Group distributions by recipient, sorted oldest -> newest
+            const distByWallet = {};
+            for (const dist of distributionCache) {
+                if (!distByWallet[dist.recipient]) distByWallet[dist.recipient] = [];
+                distByWallet[dist.recipient].push({ ...dist });
+            }
+            for (const w in distByWallet) {
+                distByWallet[w].sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+            }
+
+            // Group contribution rows by wallet, oldest contribution first (FIFO)
+            const rowsByWallet = {};
+            for (const c of contributors) {
+                if (!rowsByWallet[c.wallet]) rowsByWallet[c.wallet] = [];
+                rowsByWallet[c.wallet].push(c);
+            }
+            for (const w in rowsByWallet) {
+                rowsByWallet[w].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+            }
+
+            // For each wallet, walk through its distributions and fill rows in order.
+            for (const wallet in rowsByWallet) {
+                const rows = rowsByWallet[wallet];
+                const dists = distByWallet[wallet] || [];
+                if (dists.length === 0) continue;
+
+                let distIdx = 0;
+                let remainingInDist = dists[0] ? dists[0].zootAmount : 0;
+
+                for (const row of rows) {
+                    // Skip rows that were already marked manually (keep their manual state)
+                    if (!row.incomingTxHash && row.distributionTxHash) continue;
+
+                    let owed = Math.max(row.zootAmount - row.totalDistributed, 0);
+                    while (owed > 0 && distIdx < dists.length) {
+                        if (remainingInDist <= 0.0001) {
+                            distIdx++;
+                            if (distIdx >= dists.length) break;
+                            remainingInDist = dists[distIdx].zootAmount;
+                            continue;
+                        }
+                        const take = Math.min(owed, remainingInDist);
+                        row.totalDistributed += take;
+                        if (!row.distributionTxHashes.includes(dists[distIdx].txHash)) {
+                            row.distributionTxHashes.push(dists[distIdx].txHash);
+                        }
+                        row.distributionTxHash = dists[distIdx].txHash;
+                        row.sentAt = new Date(dists[distIdx].timestamp || Date.now()).toISOString();
+                        owed -= take;
+                        remainingInDist -= take;
+                    }
+
+                    // Verified if row is >= 90% filled (rounding tolerance)
+                    if (row.totalDistributed >= row.zootAmount * 0.9) {
+                        row.verified = true;
+                    } else {
+                        row.verified = false;
+                    }
+                }
+            }
+
+            saveToStorage();
+            renderTable();
+            updateStats();
         }
 
         // Calculate current stage based on total SOL raised
@@ -3350,7 +3419,7 @@
             document.getElementById('manualStage').value = stage;
         }
 
-        // Add manual entry
+        // Add manual entry - each call creates a separate contribution row
         function addManualEntry() {
             const wallet = document.getElementById('manualWallet').value.trim();
             const amount = parseFloat(document.getElementById('manualAmount').value);
@@ -3367,27 +3436,35 @@
             }
 
             const zootAmount = amount * STAGE_RATES[stage];
-            
+            const manualId = 'manual_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+
             contributors.push({
+                id: manualId,
                 wallet: wallet,
                 solAmount: amount,
                 zootAmount: zootAmount,
                 stage: stage,
                 date: new Date().toISOString(),
                 txHash: '',
+                incomingTxHash: '',
                 distributionTxHash: '',
+                distributionTxHashes: [],
+                totalDistributed: 0,
                 verified: false
             });
+
+            // Re-sort so newest shows first
+            contributors.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             saveToStorage();
             renderTable();
             updateStats();
-            
+
             // Clear form
             document.getElementById('manualWallet').value = '';
             document.getElementById('manualAmount').value = '';
-            
-            showToast('Contributor added successfully!', 'success');
+
+            showToast('Contribution added successfully!', 'success');
         }
 
         // Render table with pagination
@@ -3409,11 +3486,30 @@
             }
 
             document.getElementById('emptyState').style.display = 'none';
-            
+
+            // Compute occurrence index for each wallet (chronological) so duplicates show "#2", "#3", ...
+            // We iterate the global contributors list (not the filtered view) in chronological order.
+            const walletOccurrence = {};
+            const occurrenceMap = {}; // rowId -> { index, total }
+            const chronological = [...contributors].sort(
+                (a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()
+            );
+            for (const row of chronological) {
+                const key = row.wallet;
+                walletOccurrence[key] = (walletOccurrence[key] || 0) + 1;
+                const rid = row.id || row.incomingTxHash || row.txHash;
+                occurrenceMap[rid] = { index: walletOccurrence[key], total: 0 };
+            }
+            // Fill in the total count per wallet
+            for (const rid in occurrenceMap) {
+                const row = contributors.find(c => (c.id || c.incomingTxHash || c.txHash) === rid);
+                if (row) occurrenceMap[rid].total = walletOccurrence[row.wallet] || 1;
+            }
+
             // Only show visibleCount items
             const visibleItems = filtered.slice(0, visibleCount);
             const remainingCount = filtered.length - visibleCount;
-            
+
             // Show/hide Load More button
             if (remainingCount > 0) {
                 loadMoreContainer.style.display = 'flex';
@@ -3421,11 +3517,21 @@
             } else {
                 loadMoreContainer.style.display = 'none';
             }
-            
-            tbody.innerHTML = visibleItems.map((c, i) => `
+
+            tbody.innerHTML = visibleItems.map((c, i) => {
+                const rowId = c.id || c.incomingTxHash || c.txHash || '';
+                const occ = occurrenceMap[rowId] || { index: 1, total: 1 };
+                const showOcc = occ.total > 1;
+                const occBadge = showOcc
+                    ? `<span class="occurrence-badge" title="Contribution ${occ.index} of ${occ.total} from this wallet">#${occ.index}/${occ.total}</span>`
+                    : '';
+                return `
                 <tr>
                     <td>${i + 1}</td>
-                    <td class="wallet-cell">${c.wallet.substring(0, 8)}...${c.wallet.substring(c.wallet.length - 6)}</td>
+                    <td class="wallet-cell">
+                        ${c.wallet.substring(0, 8)}...${c.wallet.substring(c.wallet.length - 6)}
+                        ${occBadge}
+                    </td>
                     <td class="amount-cell">
                         <span class="sol">${c.solAmount.toFixed(4)} SOL</span>
                         <span class="zoot">${formatNumber(c.zootAmount)} ZOOT</span>
@@ -3439,15 +3545,15 @@
                         }
                     </td>
                     <td class="tx-cell">
-                        ${c.distributionTxHash 
+                        ${c.distributionTxHash
                             ? `<a href="https://solscan.io/tx/${c.distributionTxHash}" target="_blank" class="tx-hash dist-tx" title="${c.distributionTxHash}">${c.distributionTxHash.substring(0, 6)}...${c.distributionTxHash.substring(c.distributionTxHash.length - 4)}</a>`
                             : '<span class="tx-empty">—</span>'
                         }
                     </td>
                     <td class="action-cell">
                         ${isAdmin ? `
-                        <button class="action-btn send" 
-                            onclick="openSendModal('${c.wallet}')"
+                        <button class="action-btn send"
+                            onclick="openSendModal('${rowId}')"
                             ${c.verified ? 'disabled' : ''}>
                             <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                                 <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"></path>
@@ -3478,8 +3584,8 @@
                             ` : 'Pending'}
                         </span>
                     </td>
-                </tr>
-            `).join('');
+                </tr>`;
+            }).join('');
         }
 
         // Load more wallets
@@ -3594,13 +3700,14 @@
             showToast('Receiving wallet copied!', 'success');
         }
 
-        // Open Send Modal
-        function openSendModal(wallet) {
-            const contributor = contributors.find(c => c.wallet === wallet);
+        // Open Send Modal - rowId is the unique contribution row id (tx signature or manual id)
+        function openSendModal(rowId) {
+            const contributor = contributors.find(c => (c.id || c.incomingTxHash || c.txHash) === rowId);
             if (!contributor) return;
-            
-            currentSendingWallet = wallet;
-            
+
+            currentSendingRowId = rowId;
+            currentSendingWallet = contributor.wallet;
+
             // Populate modal fields
             document.getElementById('modalWallet').value = contributor.wallet;
             document.getElementById('modalSolAmount').value = contributor.solAmount.toFixed(4) + ' SOL';
@@ -3623,8 +3730,15 @@
         function closeSendModal() {
             document.getElementById('sendModal').classList.remove('active');
             currentSendingWallet = null;
+            currentSendingRowId = null;
             const statusEl = document.getElementById('sendStatus');
             if (statusEl) statusEl.textContent = '';
+        }
+
+        // Find the contribution row currently being sent (by row id, not by wallet)
+        function getCurrentSendingRow() {
+            if (!currentSendingRowId) return null;
+            return contributors.find(c => (c.id || c.incomingTxHash || c.txHash) === currentSendingRowId) || null;
         }
 
         function copyModalWallet() {
@@ -3635,15 +3749,20 @@
 
         function markAsSent() {
             const txHash = document.getElementById('modalTxHash').value.trim();
-            
+
             if (!txHash) {
                 showToast('Please paste the transaction hash after sending', 'error');
                 return;
             }
-            
-            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
+
+            const contributor = getCurrentSendingRow();
             if (contributor) {
                 contributor.distributionTxHash = txHash;
+                if (!contributor.distributionTxHashes) contributor.distributionTxHashes = [];
+                if (!contributor.distributionTxHashes.includes(txHash)) {
+                    contributor.distributionTxHashes.push(txHash);
+                }
+                contributor.totalDistributed = contributor.zootAmount;
                 contributor.verified = true;
                 contributor.sentAt = new Date().toISOString();
                 saveToStorage();
@@ -3857,7 +3976,7 @@
                 return;
             }
 
-            const contributor = contributors.find(c => c.wallet === currentSendingWallet);
+            const contributor = getCurrentSendingRow();
             if (!contributor) {
                 showToast('Contributor not found', 'error');
                 return;
@@ -3937,6 +4056,11 @@
 
                 document.getElementById('modalTxHash').value = signature;
                 contributor.distributionTxHash = signature;
+                if (!contributor.distributionTxHashes) contributor.distributionTxHashes = [];
+                if (!contributor.distributionTxHashes.includes(signature)) {
+                    contributor.distributionTxHashes.push(signature);
+                }
+                contributor.totalDistributed = contributor.zootAmount;
                 contributor.verified = true;
                 contributor.sentAt = new Date().toISOString();
                 saveToStorage();
@@ -4092,14 +4216,14 @@
             }, 3000);
         }
 
-        // Delete contributor
-        function deleteContributor(wallet) {
-            if (confirm('Are you sure you want to remove this contributor?')) {
-                contributors = contributors.filter(c => c.wallet !== wallet);
+        // Delete a single contribution row (by unique row id)
+        function deleteContributor(rowId) {
+            if (confirm('Are you sure you want to remove this contribution row?')) {
+                contributors = contributors.filter(c => (c.id || c.incomingTxHash || c.txHash) !== rowId);
                 saveToStorage();
                 renderTable();
                 updateStats();
-                showToast('Contributor removed', 'success');
+                showToast('Contribution removed', 'success');
             }
         }
     </script>
