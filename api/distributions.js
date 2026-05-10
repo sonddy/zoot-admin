@@ -18,34 +18,52 @@ module.exports = async (req, res) => {
     }
 };
 
+// Paginate the Helius enriched-transactions endpoint so dust spam against the
+// distribution wallet can't push real ZOOT transfers out of the 100-tx window.
+const HELIUS_MAX_PAGES = 60;
+const HELIUS_PAGE_SIZE = 100;
+
 async function fetchDistributions() {
-    const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
-
-    const response = await fetch(url);
-    if (!response.ok) {
-        throw new Error(`Helius error: ${response.status}`);
-    }
-
-    const data = await response.json();
     const distributions = [];
+    const seen = new Set();
+    let before = '';
 
-    for (const tx of data) {
-        if (!tx.tokenTransfers || tx.tokenTransfers.length === 0) continue;
+    for (let page = 0; page < HELIUS_MAX_PAGES; page++) {
+        const url = `https://api.helius.xyz/v0/addresses/${DISTRIBUTION_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${HELIUS_PAGE_SIZE}${before ? `&before=${before}` : ''}`;
 
-        for (const transfer of tx.tokenTransfers) {
-            if (
-                transfer.fromUserAccount === DISTRIBUTION_WALLET &&
-                transfer.mint === ZOOT_MINT &&
-                transfer.tokenAmount > 0
-            ) {
-                distributions.push({
-                    recipient: transfer.toUserAccount,
-                    zootAmount: transfer.tokenAmount,
-                    txHash: tx.signature,
-                    timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now()
-                });
+        const response = await fetch(url);
+        if (!response.ok) {
+            if (page > 0) break;
+            throw new Error(`Helius error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) break;
+
+        for (const tx of data) {
+            if (!tx.tokenTransfers || tx.tokenTransfers.length === 0) continue;
+            for (const transfer of tx.tokenTransfers) {
+                if (
+                    transfer.fromUserAccount === DISTRIBUTION_WALLET &&
+                    transfer.mint === ZOOT_MINT &&
+                    transfer.tokenAmount > 0
+                ) {
+                    const key = `${tx.signature}:${transfer.toUserAccount}:${transfer.tokenAmount}`;
+                    if (seen.has(key)) continue;
+                    seen.add(key);
+                    distributions.push({
+                        recipient: transfer.toUserAccount,
+                        zootAmount: transfer.tokenAmount,
+                        txHash: tx.signature,
+                        timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now()
+                    });
+                }
             }
         }
+
+        if (data.length < HELIUS_PAGE_SIZE) break;
+        before = data[data.length - 1].signature;
+        if (!before) break;
     }
 
     return distributions;

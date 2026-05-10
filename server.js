@@ -59,76 +59,101 @@ app.get('/api/transactions', async (req, res) => {
     res.json({ success: false, error: 'All data sources failed', transactions: [] });
 });
 
-// Fetch from Helius API
+// Paginated Helius fetch. The receiving wallet is targeted by sub-0.001 SOL
+// dust transfers that fill page 1, so we follow the `before=<sig>` cursor
+// until history is exhausted (or a safety cap is reached).
+const HELIUS_MAX_PAGES = 60;
+const HELIUS_PAGE_SIZE = 100;
+const MIN_REAL_SOL = 0.001;
+
 async function fetchFromHelius() {
-    const url = `https://api.helius.xyz/v0/addresses/${RECEIVING_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=100`;
-    
-    const response = await fetch(url);
-    if (!response.ok) {
-        const text = await response.text();
-        throw new Error(`Helius error: ${response.status} - ${text}`);
-    }
-    
-    const data = await response.json();
     const incomingTxs = [];
-    
-    for (const tx of data) {
-        if (tx.nativeTransfers && tx.nativeTransfers.length > 0) {
+    const seen = new Set();
+    let before = '';
+
+    for (let page = 0; page < HELIUS_MAX_PAGES; page++) {
+        const url = `https://api.helius.xyz/v0/addresses/${RECEIVING_WALLET}/transactions?api-key=${HELIUS_API_KEY}&limit=${HELIUS_PAGE_SIZE}${before ? `&before=${before}` : ''}`;
+
+        const response = await fetch(url);
+        if (!response.ok) {
+            const text = await response.text();
+            if (page > 0) break;
+            throw new Error(`Helius error: ${response.status} - ${text}`);
+        }
+
+        const data = await response.json();
+        if (!Array.isArray(data) || data.length === 0) break;
+
+        for (const tx of data) {
+            if (!tx.nativeTransfers || tx.nativeTransfers.length === 0) continue;
             for (const transfer of tx.nativeTransfers) {
-                if (transfer.toUserAccount === RECEIVING_WALLET && transfer.amount > 0) {
-                    const amountInSol = transfer.amount / 1e9;
-                    if (amountInSol >= 0.001) {
-                        incomingTxs.push({
-                            sender: transfer.fromUserAccount,
-                            amount: amountInSol,
-                            signature: tx.signature,
-                            timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now(),
-                            slot: tx.slot
-                        });
-                    }
-                }
+                if (transfer.toUserAccount !== RECEIVING_WALLET) continue;
+                if (!transfer.amount || transfer.amount <= 0) continue;
+                const amountInSol = transfer.amount / 1e9;
+                if (amountInSol < MIN_REAL_SOL) continue;
+
+                const key = `${tx.signature}:${transfer.fromUserAccount}:${transfer.amount}`;
+                if (seen.has(key)) continue;
+                seen.add(key);
+
+                incomingTxs.push({
+                    sender: transfer.fromUserAccount,
+                    amount: amountInSol,
+                    signature: tx.signature,
+                    timestamp: tx.timestamp ? tx.timestamp * 1000 : Date.now(),
+                    slot: tx.slot
+                });
             }
         }
+
+        if (data.length < HELIUS_PAGE_SIZE) break;
+        before = data[data.length - 1].signature;
+        if (!before) break;
     }
-    
+
     return incomingTxs;
 }
 
-// Fetch from Solscan API (no CORS on server!)
+// Fetch from Solscan API (no CORS on server!) - paginated for dust resilience.
 async function fetchFromSolscan() {
-    const url = `https://api-v2.solscan.io/v2/account/transfer?address=${RECEIVING_WALLET}&page=1&page_size=100&sort_by=block_time&sort_order=desc`;
-    
-    const response = await fetch(url, {
-        headers: {
-            'Accept': 'application/json',
-            'User-Agent': 'ZOOT-Admin/1.0'
-        }
-    });
-    
-    if (!response.ok) {
-        throw new Error(`Solscan error: ${response.status}`);
-    }
-    
-    const data = await response.json();
+    const SOLSCAN_PAGE_SIZE = 100;
+    const SOLSCAN_MAX_PAGES = 40;
     const incomingTxs = [];
-    
-    if (data.success && data.data && Array.isArray(data.data)) {
-        for (const tx of data.data) {
-            if (tx.to_address === RECEIVING_WALLET && tx.amount > 0) {
-                const amountInSol = tx.amount / 1e9;
-                if (amountInSol >= 0.001) {
-                    incomingTxs.push({
-                        sender: tx.from_address,
-                        amount: amountInSol,
-                        signature: tx.trans_id,
-                        timestamp: tx.block_time * 1000,
-                        slot: tx.slot || 0
-                    });
-                }
-            }
+    const seen = new Set();
+
+    for (let page = 1; page <= SOLSCAN_MAX_PAGES; page++) {
+        const url = `https://api-v2.solscan.io/v2/account/transfer?address=${RECEIVING_WALLET}&page=${page}&page_size=${SOLSCAN_PAGE_SIZE}&sort_by=block_time&sort_order=desc`;
+
+        const response = await fetch(url, {
+            headers: { 'Accept': 'application/json', 'User-Agent': 'ZOOT-Admin/1.0' }
+        });
+        if (!response.ok) {
+            if (page > 1) break;
+            throw new Error(`Solscan error: ${response.status}`);
         }
+
+        const data = await response.json();
+        if (!data.success || !Array.isArray(data.data) || data.data.length === 0) break;
+
+        for (const tx of data.data) {
+            if (tx.to_address !== RECEIVING_WALLET || !tx.amount || tx.amount <= 0) continue;
+            const amountInSol = tx.amount / 1e9;
+            if (amountInSol < MIN_REAL_SOL) continue;
+            const key = `${tx.trans_id}:${tx.from_address}:${tx.amount}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            incomingTxs.push({
+                sender: tx.from_address,
+                amount: amountInSol,
+                signature: tx.trans_id,
+                timestamp: tx.block_time * 1000,
+                slot: tx.slot || 0
+            });
+        }
+
+        if (data.data.length < SOLSCAN_PAGE_SIZE) break;
     }
-    
+
     return incomingTxs;
 }
 
